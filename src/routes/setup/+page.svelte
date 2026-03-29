@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { goto } from '$app/navigation';
+	import { base } from '$app/paths';
 	import { NoteCache } from '$lib/cache';
 	import { GitHubClient } from '$lib/github';
 
@@ -20,7 +21,7 @@
 			const cache = new NoteCache();
 			await cache.saveConfig({ token, repo });
 
-			goto('/');
+			goto(`${base}/`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Connection failed. Check your token and repo name.';
 		} finally {
