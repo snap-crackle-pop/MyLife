@@ -3,6 +3,7 @@
 	import { base } from '$app/paths';
 	import { NoteCache } from '$lib/cache';
 	import { GitHubClient } from '$lib/github';
+	import { initStore, loadNotes } from '$lib/stores/notes.svelte';
 
 	let token = $state('');
 	let repo = $state('');
@@ -21,6 +22,8 @@
 			const cache = new NoteCache();
 			await cache.saveConfig({ token, repo });
 
+			initStore(token, repo);
+			await loadNotes();
 			goto(`${base}/`);
 		} catch (e) {
 			error = e instanceof Error ? e.message : 'Connection failed. Check your token and repo name.';
