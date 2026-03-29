@@ -81,10 +81,17 @@ describe('GitHub API Client', () => {
 		expect(mockFetch.mock.calls[0][1].method).toBe('DELETE');
 	});
 
-	it('throws on API errors', async () => {
+	it('returns empty array for 404 (empty repo with no commits)', async () => {
 		mockFetch.mockResolvedValueOnce(githubError(404, 'Not Found'));
 
-		await expect(client.listFiles()).rejects.toThrow('GitHub API error: 404 Not Found');
+		const files = await client.listFiles();
+		expect(files).toEqual([]);
+	});
+
+	it('throws on non-404 API errors', async () => {
+		mockFetch.mockResolvedValueOnce(githubError(401, 'Unauthorized'));
+
+		await expect(client.listFiles()).rejects.toThrow('GitHub API error: 401 Unauthorized');
 	});
 });
 

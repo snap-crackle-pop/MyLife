@@ -15,7 +15,7 @@
 
 		try {
 			const client = new GitHubClient(token, repo);
-			await client.listFiles();
+			await client.validateConnection();
 
 			const cache = new NoteCache();
 			await cache.saveConfig({ token, repo });

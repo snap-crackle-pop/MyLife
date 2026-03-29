@@ -30,10 +30,20 @@ export class GitHubClient {
 		return response.json() as Promise<T>;
 	}
 
+	async validateConnection(): Promise<void> {
+		await this.request(`${this.baseUrl}`);
+	}
+
 	async listFiles(): Promise<GitHubFile[]> {
-		const data = await this.request<{ tree: GitHubTreeEntry[] }>(
-			`${this.baseUrl}/git/trees/main?recursive=1`
-		);
+		const response = await fetch(`${this.baseUrl}/git/trees/main?recursive=1`, {
+			headers: this.headers
+		});
+		// Empty repo (no commits yet) — return empty list
+		if (response.status === 404) return [];
+		if (!response.ok) {
+			throw new Error(`GitHub API error: ${response.status} ${response.statusText}`);
+		}
+		const data = (await response.json()) as { tree: GitHubTreeEntry[] };
 		return data.tree
 			.filter((entry) => entry.type === 'blob')
 			.map(({ path, sha }) => ({ path, sha }));
