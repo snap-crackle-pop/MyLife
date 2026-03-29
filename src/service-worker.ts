@@ -26,6 +26,10 @@ sw.addEventListener('activate', (event) => {
 sw.addEventListener('fetch', (event) => {
 	if (event.request.method !== 'GET') return;
 
+	// Only handle same-origin requests — never intercept GitHub API calls
+	const url = new URL(event.request.url);
+	if (url.origin !== sw.location.origin) return;
+
 	event.respondWith(
 		(async () => {
 			const url = new URL(event.request.url);
