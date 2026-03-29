@@ -8,7 +8,8 @@
 	let error = $state('');
 	let testing = $state(false);
 
-	async function handleSubmit() {
+	async function handleSubmit(e: SubmitEvent) {
+		e.preventDefault();
 		error = '';
 		testing = true;
 
