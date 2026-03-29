@@ -11,6 +11,14 @@ export default [
 	...svelte.configs['flat/recommended'],
 	...svelte.configs['flat/prettier'],
 	{
+		rules: {
+			// Pure functions using Map/Date don't need Svelte reactive wrappers
+			'svelte/prefer-svelte-reactivity': 'off',
+			// goto() without resolve() is intentional for auth redirects in onMount
+			'svelte/no-navigation-without-resolve': 'off'
+		}
+	},
+	{
 		languageOptions: {
 			globals: globals.browser
 		}
