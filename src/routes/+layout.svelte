@@ -2,6 +2,7 @@
 	import '../app.css';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/state';
+	import { base } from '$app/paths';
 	import { NoteCache } from '$lib/cache';
 	import { initStore, loadNotes } from '$lib/stores/notes.svelte';
 	import { onMount } from 'svelte';
@@ -15,7 +16,7 @@
 
 		if (!config) {
 			if (!page.url.pathname.includes('/setup')) {
-				goto('/setup');
+				goto(`${base}/setup`);
 			}
 			checking = false;
 			return;
