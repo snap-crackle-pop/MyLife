@@ -1,48 +1,42 @@
-# MyLife
+# sv
 
-Personal second-brain PWA for capturing notes, to-dos, bookmarks, and podcasts. Zero hosting cost — deployed on GitHub Pages with notes stored as markdown files in a private GitHub repo.
+Everything you need to build a Svelte project, powered by [`sv`](https://github.com/sveltejs/cli).
 
-## Tech Stack
+## Creating a project
 
-- **Framework**: SvelteKit 2 + Svelte 5 (static adapter)
-- **Hosting**: GitHub Pages
-- **Storage**: Private GitHub repo via REST API
-- **Offline**: IndexedDB + Service Worker (PWA)
-- **Testing**: Vitest + @testing-library/svelte + Playwright
-- **Style**: Catppuccin Mocha dark theme
+If you're seeing this, you've probably already done this step. Congrats!
 
-## Getting Started
-
-```bash
-npm install
-npm run dev
+```sh
+# create a new project
+npx sv create my-app
 ```
 
-## Commands
+To recreate this project with the same configuration:
 
-| Command | Description |
-|---------|-------------|
-| `npm run dev` | Start dev server |
-| `npm run build` | Production build |
-| `npm run preview` | Preview production build |
-| `npm run check` | TypeScript checking |
-| `npm run lint` | ESLint |
-| `npm run format` | Prettier check |
-| `npm run test` | Run integration tests |
-| `npm run validate` | Run all checks |
+```sh
+# recreate this project
+npx sv@0.13.0 create --template minimal --types ts --install npm .
+```
 
-## Features
+## Developing
 
-- Plain text notes and to-do lists
-- Folder-based organization (mirrors GitHub repo structure)
-- Full-text search across all notes
-- Pinned/favorited notes
-- Auto-created daily notes
-- YouTube URL auto-embed
-- Voice dictation (Web Speech API)
-- Auto-save with offline queue
-- PWA — installable on Android, works offline
+Once you've created a project and installed dependencies with `npm install` (or `pnpm install` or `yarn`), start a development server:
 
-## Deployment
+```sh
+npm run dev
 
-Pushes to `main` auto-deploy to GitHub Pages via GitHub Actions.
+# or start the server and open the app in a new browser tab
+npm run dev -- --open
+```
+
+## Building
+
+To create a production version of your app:
+
+```sh
+npm run build
+```
+
+You can preview the production build with `npm run preview`.
+
+> To deploy your app, you may need to install an [adapter](https://svelte.dev/docs/kit/adapters) for your target environment.

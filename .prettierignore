@@ -1,0 +1,7 @@
+build/
+.svelte-kit/
+node_modules/
+.claude/
+docs/
+CLAUDE.md
+README.md
