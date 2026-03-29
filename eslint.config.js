@@ -11,6 +11,11 @@ export default [
 	...svelte.configs['flat/recommended'],
 	...svelte.configs['flat/prettier'],
 	{
+		languageOptions: {
+			globals: globals.browser
+		}
+	},
+	{
 		files: ['**/*.ts'],
 		languageOptions: {
 			parser: tsParser,
@@ -23,7 +28,8 @@ export default [
 		},
 		rules: {
 			...ts.configs.recommended.rules,
-			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }]
+			'@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_' }],
+			'no-undef': 'off'
 		}
 	},
 	{
