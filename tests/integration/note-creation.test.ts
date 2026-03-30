@@ -49,9 +49,4 @@ describe('buildFolderTree', () => {
 		expect(tree[0].name).toBe('alpha');
 		expect(tree[1].name).toBe('zebra');
 	});
-
-	it('always puts .trash last regardless of alphabetical order', () => {
-		const tree = buildFolderTree(['.trash/old.md', 'alpha/a.md', 'zebra/b.md']);
-		expect(tree[tree.length - 1].name).toBe('.trash');
-	});
 });

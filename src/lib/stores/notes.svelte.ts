@@ -44,11 +44,7 @@ export function buildFolderTree(paths: string[]): Folder[] {
 		}
 	}
 
-	return roots.sort((a, b) => {
-		if (a.name === '.trash') return 1;
-		if (b.name === '.trash') return -1;
-		return a.name.localeCompare(b.name);
-	});
+	return roots.sort((a, b) => a.name.localeCompare(b.name));
 }
 
 // --- Reactive store ---
@@ -210,7 +206,7 @@ export function getPinnedNotes(): Note[] {
 }
 
 export function getFolderTree(): Folder[] {
-	return buildFolderTree(notes.map((n) => n.path));
+	return buildFolderTree(notes.map((n) => n.path)).filter((f) => f.name !== '.trash');
 }
 
 export async function createFolder(name: string): Promise<void> {
