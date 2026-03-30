@@ -222,28 +222,38 @@ export async function createFolder(name: string): Promise<void> {
 		sha: ''
 	};
 
-	// Optimistic update — show folder immediately before GitHub responds
+	// Optimistic update — add to store and cache immediately so it survives a reload
 	if (!notes.find((n) => n.path === path)) {
 		notes = [...notes, note];
+		await cache.saveNote(note);
 	}
 
 	if (navigator.onLine && github) {
+		let sha = '';
 		try {
-			note.sha = await github.createFile(path, '');
+			sha = await github.createFile(path, '');
 		} catch {
-			// File already exists in GitHub — fetch its sha instead
-			const existing = await github.getFileContent(path);
-			note.sha = existing.sha;
+			// File already exists — fetch its sha
+			try {
+				const existing = await github.getFileContent(path);
+				sha = existing.sha;
+			} catch {
+				// GitHub unreachable — leave sha empty, sync queue will retry
+				const queue = await cache.getSyncQueue();
+				queue.push({ action: 'create', path, content: '', queuedAt: now });
+				await cache.saveSyncQueue(queue);
+			}
 		}
-		// Patch the sha into the store entry now that we have it
-		notes = notes.map((n) => (n.path === path ? { ...n, sha: note.sha } : n));
+		if (sha) {
+			const updated = { ...note, sha };
+			notes = notes.map((n) => (n.path === path ? updated : n));
+			await cache.saveNote(updated);
+		}
 	} else {
 		const queue = await cache.getSyncQueue();
 		queue.push({ action: 'create', path, content: '', queuedAt: now });
 		await cache.saveSyncQueue(queue);
 	}
-
-	await cache.saveNote({ ...note });
 }
 
 export async function renameFolder(oldName: string, newName: string): Promise<void> {
