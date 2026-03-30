@@ -23,8 +23,11 @@
 		}
 
 		initStore(config.token, config.repo);
-		await loadNotes();
-		checking = false;
+		try {
+			await loadNotes();
+		} finally {
+			checking = false;
+		}
 	});
 </script>
 

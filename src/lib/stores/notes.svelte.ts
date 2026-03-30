@@ -84,9 +84,13 @@ export async function loadNotes() {
 		}
 
 		if (navigator.onLine && sync) {
-			await sync.pushOfflineQueue();
-			const synced = await sync.fullSync();
-			notes = synced;
+			try {
+				await sync.pushOfflineQueue();
+				const synced = await sync.fullSync();
+				notes = synced;
+			} catch {
+				// GitHub sync failed — keep showing cached notes
+			}
 		}
 
 		initialized = true;
