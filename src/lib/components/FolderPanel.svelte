@@ -38,9 +38,9 @@
 		renaming = false;
 	}
 
-	function confirmDelete() {
-		ondelete?.(folder);
+	async function confirmDelete() {
 		confirming = false;
+		await ondelete?.(folder);
 	}
 
 	const realNotes = $derived(notes.filter((n) => !n.path.endsWith('.gitkeep')));

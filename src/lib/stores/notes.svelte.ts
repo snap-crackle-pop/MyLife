@@ -291,34 +291,52 @@ export async function deleteFolder(name: string): Promise<void> {
 	const toDelete = notes.filter((n) => n.path.startsWith(`${name}/`));
 	const now = new Date().toISOString();
 
+	// Optimistic: move real notes to trash and remove folder from store immediately
+	const trashedNotes: Note[] = [];
+	for (const note of toDelete) {
+		await cache.deleteNote(note.path);
+		if (!note.path.endsWith('.gitkeep')) {
+			const trashPath = `.trash/${note.path.split('/').pop()}`;
+			const trashed: Note = { ...note, path: trashPath, updatedAt: now, sha: '' };
+			trashedNotes.push(trashed);
+			await cache.saveNote(trashed);
+		}
+	}
+	notes = [...notes.filter((n) => !n.path.startsWith(`${name}/`)), ...trashedNotes];
+
+	// Sync to GitHub — each note is independent, failures are queued for retry
 	for (const note of toDelete) {
 		if (note.path.endsWith('.gitkeep')) {
-			// Delete placeholder without trashing
-			if (navigator.onLine && github) {
-				await github.deleteFile(note.path, note.sha);
-			} else {
-				const queue = await cache.getSyncQueue();
-				queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
-				await cache.saveSyncQueue(queue);
+			if (navigator.onLine && github && note.sha) {
+				try {
+					await github.deleteFile(note.path, note.sha);
+				} catch {
+					// sha may be stale — not critical, file will be cleaned up on next full sync
+				}
 			}
-			await cache.deleteNote(note.path);
 		} else {
 			const trashPath = `.trash/${note.path.split('/').pop()}`;
 			if (navigator.onLine && github) {
-				await github.createFile(trashPath, note.content);
-				await github.deleteFile(note.path, note.sha);
+				try {
+					const sha = await github.createFile(trashPath, note.content);
+					const updated: Note = { ...note, path: trashPath, updatedAt: now, sha };
+					notes = notes.map((n) => (n.path === trashPath ? updated : n));
+					await cache.saveNote(updated);
+					if (note.sha) await github.deleteFile(note.path, note.sha);
+				} catch {
+					const queue = await cache.getSyncQueue();
+					queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+					if (note.sha)
+						queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
+					await cache.saveSyncQueue(queue);
+				}
 			} else {
 				const queue = await cache.getSyncQueue();
 				queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
-				queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
+				if (note.sha)
+					queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
 				await cache.saveSyncQueue(queue);
 			}
-			const trashed: Note = { ...note, path: trashPath, updatedAt: now };
-			await cache.saveNote(trashed);
-			await cache.deleteNote(note.path);
-			notes = [...notes.filter((n) => n.path !== note.path), trashed];
-			continue;
 		}
-		notes = notes.filter((n) => n.path !== note.path);
 	}
 }
