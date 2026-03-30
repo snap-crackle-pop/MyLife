@@ -21,10 +21,10 @@ export class SyncEngine {
 
 	async fullSync(): Promise<Note[]> {
 		const files = await this.github.listFiles();
-		const mdFiles = files.filter((f) => f.path.endsWith('.md'));
+		const syncFiles = files.filter((f) => f.path.endsWith('.md') || f.path.endsWith('.gitkeep'));
 		const notes: Note[] = [];
 
-		for (const file of mdFiles) {
+		for (const file of syncFiles) {
 			const { content, sha } = await this.github.getFileContent(file.path);
 			const note: Note = {
 				path: file.path,

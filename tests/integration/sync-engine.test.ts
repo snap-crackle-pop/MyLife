@@ -21,6 +21,20 @@ describe('SyncEngine', () => {
 	});
 
 	describe('fullSync', () => {
+		it('includes .gitkeep files so empty folders survive a refresh', async () => {
+			mockFetch.mockResolvedValueOnce(
+				githubResponse({
+					tree: [{ path: 'projects/.gitkeep', type: 'blob', sha: 'gk1' }]
+				})
+			);
+			mockFetch.mockResolvedValueOnce(githubResponse({ content: btoa(''), sha: 'gk1' }));
+
+			const notes = await sync.fullSync();
+
+			expect(notes).toHaveLength(1);
+			expect(notes[0].path).toBe('projects/.gitkeep');
+		});
+
 		it('fetches files from GitHub, caches them, and returns Notes', async () => {
 			// Mock: listFiles (tree endpoint)
 			mockFetch.mockResolvedValueOnce(
