@@ -39,7 +39,8 @@ Keep messages short (under 72 chars first line). Focus on *why*, not *what*.
 - `npm run check` — TypeScript type checking (svelte-check)
 - `npm run lint` — ESLint
 - `npm run format` — Prettier check
-- `npm run test` — Vitest (integration tests)
+- `npm run test` — Vitest (unit + integration tests)
+- `npm run test:e2e` — Playwright E2E tests (requires dev server)
 - `npm run validate` — Run ALL checks: check + lint + format + test
 
 **Always run `npm run validate` before committing.**
@@ -53,6 +54,24 @@ Follow the Testing Trophy (Kent C. Dodds):
 - **Test state through UI** — don't test stores in isolation
 - **E2E tests** with Playwright for critical user journeys
 - Test files live in `tests/integration/` and `tests/e2e/`
+
+### Testing stores with module-level `$state`
+Store functions in `*.svelte.ts` use module-level `$state`. Use `vi.resetModules()` + dynamic import in `beforeEach` to get fresh state per test:
+```ts
+beforeEach(async () => {
+  vi.resetModules();
+  store = await import('$lib/stores/notes.svelte');
+  store.initStore('fake-token', 'testuser/mylife-notes');
+});
+```
+Test-side `NoteCache` instances share data with the store's cache via the idb-keyval mock Map in `tests/setup.ts`.
+
+### E2E test conventions
+- Bootstrap via the setup page — do NOT seed IndexedDB with `addInitScript` (race condition with `onMount`)
+- Use `setupApp(page, files)` helper as the pattern; see `tests/e2e/folder-workflow.spec.ts`
+- Mock all GitHub API calls with `page.route('https://api.github.com/**', handler)`
+- Playwright has no `getByDisplayValue` — use `page.locator('.class-name')` instead
+- Avoid broad regex role selectors (e.g. `/delete/i` matches a folder named "to-delete") — prefer `{ name: 'Delete', exact: true }`
 
 ## Code Conventions
 
@@ -88,6 +107,16 @@ Follow the Testing Trophy (Kent C. Dodds):
 - `tests/e2e/` — Playwright end-to-end tests
 - `tests/factories.ts` — test data factories
 - `tests/setup.ts` — global test setup (idb-keyval mock)
+
+## Optimistic Updates
+Every store mutation must follow this pattern — **never wait for the API before updating the UI**:
+1. Update `notes` state and `cache` immediately
+2. Call GitHub API in the background
+3. On success: patch the returned `sha` back into the note in state and cache
+4. On failure or offline: push the op to the sync queue via `queueOp()`
+
+Applies to all of: `createNote`, `updateNote`, `deleteNote`, `createFolder`, `renameFolder`, `deleteFolder`.
+The sync queue is drained by `pushOfflineQueue()` on the next online sync.
 
 ## Key Design Decisions
 - Client-only SPA (ssr=false, prerender=false) — needs browser APIs
