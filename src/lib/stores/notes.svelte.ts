@@ -47,6 +47,14 @@ export function buildFolderTree(paths: string[]): Folder[] {
 	return roots.sort((a, b) => a.name.localeCompare(b.name));
 }
 
+// --- Helpers ---
+
+async function queueOp(item: SyncQueueItem) {
+	const queue = await cache.getSyncQueue();
+	queue.push(item);
+	await cache.saveSyncQueue(queue);
+}
+
 // --- Reactive store ---
 
 let notes = $state<Note[]>([]);
@@ -109,35 +117,33 @@ export async function createNote(
 	const content = type === 'todo' ? `${title}\n\n- [ ] ` : title;
 	const now = new Date().toISOString();
 
-	const note: Note = {
-		path,
-		title,
-		content,
-		type,
-		pinned: false,
-		updatedAt: now,
-		sha: ''
-	};
+	const note: Note = { path, title, content, type, pinned: false, updatedAt: now, sha: '' };
+
+	// Optimistic: show immediately
+	notes = [...notes, note];
+	await cache.saveNote(note);
 
 	if (navigator.onLine && github) {
-		note.sha = await github.createFile(path, content);
+		try {
+			const sha = await github.createFile(path, content);
+			const updated = { ...note, sha };
+			notes = notes.map((n) => (n.path === path ? updated : n));
+			await cache.saveNote(updated);
+			return updated;
+		} catch {
+			await queueOp({ action: 'create', path, content, queuedAt: now });
+		}
 	} else {
-		const queue = await cache.getSyncQueue();
-		const item: SyncQueueItem = { action: 'create', path, content, queuedAt: now };
-		queue.push(item);
-		await cache.saveSyncQueue(queue);
+		await queueOp({ action: 'create', path, content, queuedAt: now });
 	}
 
-	await cache.saveNote(note);
-	notes = [...notes, note];
 	return note;
 }
 
 export async function updateNote(path: string, content: string) {
-	const idx = notes.findIndex((n) => n.path === path);
-	if (idx === -1) return;
+	const existing = notes.find((n) => n.path === path);
+	if (!existing) return;
 
-	const existing = notes[idx];
 	const now = new Date().toISOString();
 	const updated: Note = {
 		...existing,
@@ -147,23 +153,22 @@ export async function updateNote(path: string, content: string) {
 		updatedAt: now
 	};
 
-	if (navigator.onLine && github) {
-		updated.sha = await github.updateFile(path, content, existing.sha);
-	} else {
-		const queue = await cache.getSyncQueue();
-		const item: SyncQueueItem = {
-			action: 'update',
-			path,
-			content,
-			sha: existing.sha,
-			queuedAt: now
-		};
-		queue.push(item);
-		await cache.saveSyncQueue(queue);
-	}
-
-	await cache.saveNote(updated);
+	// Optimistic: update immediately, keep existing sha until GitHub confirms
 	notes = notes.map((n) => (n.path === path ? updated : n));
+	await cache.saveNote(updated);
+
+	if (navigator.onLine && github) {
+		try {
+			const sha = await github.updateFile(path, content, existing.sha);
+			const withSha = { ...updated, sha };
+			notes = notes.map((n) => (n.path === path ? withSha : n));
+			await cache.saveNote(withSha);
+		} catch {
+			await queueOp({ action: 'update', path, content, sha: existing.sha, queuedAt: now });
+		}
+	} else {
+		await queueOp({ action: 'update', path, content, sha: existing.sha, queuedAt: now });
+	}
 }
 
 export async function deleteNote(path: string) {
@@ -172,30 +177,36 @@ export async function deleteNote(path: string) {
 
 	const trashPath = `.trash/${path.split('/').pop()}`;
 	const now = new Date().toISOString();
+	const trashed: Note = { ...note, path: trashPath, updatedAt: now, sha: '' };
+
+	// Optimistic: move to trash immediately
+	notes = [...notes.filter((n) => n.path !== path), trashed];
+	await cache.deleteNote(path);
+	await cache.saveNote(trashed);
 
 	if (navigator.onLine && github) {
-		await github.createFile(trashPath, note.content);
-		await github.deleteFile(path, note.sha);
+		try {
+			const sha = await github.createFile(trashPath, note.content);
+			if (note.sha) await github.deleteFile(path, note.sha);
+			const updated = { ...trashed, sha };
+			notes = notes.map((n) => (n.path === trashPath ? updated : n));
+			await cache.saveNote(updated);
+		} catch {
+			await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+			if (note.sha) await queueOp({ action: 'delete', path, sha: note.sha, queuedAt: now });
+		}
 	} else {
-		const queue = await cache.getSyncQueue();
-		queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
-		queue.push({ action: 'delete', path, sha: note.sha, queuedAt: now });
-		await cache.saveSyncQueue(queue);
+		await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+		if (note.sha) await queueOp({ action: 'delete', path, sha: note.sha, queuedAt: now });
 	}
-
-	const trashedNote: Note = { ...note, path: trashPath, updatedAt: now };
-	await cache.deleteNote(path);
-	await cache.saveNote(trashedNote);
-	notes = notes.filter((n) => n.path !== path);
-	notes = [...notes, trashedNote];
 }
 
 export async function togglePin(path: string) {
 	const note = notes.find((n) => n.path === path);
 	if (!note) return;
 	const updated = { ...note, pinned: !note.pinned };
-	await cache.saveNote(updated);
 	notes = notes.map((n) => (n.path === path ? updated : n));
+	await cache.saveNote(updated);
 }
 
 export function getNotesInFolder(folder: string): Note[] {
@@ -226,7 +237,7 @@ export async function createFolder(name: string): Promise<void> {
 		sha: ''
 	};
 
-	// Optimistic update — add to store and cache immediately so it survives a reload
+	// Optimistic: add to store and cache immediately
 	if (!notes.find((n) => n.path === path)) {
 		notes = [...notes, note];
 		await cache.saveNote(note);
@@ -237,15 +248,11 @@ export async function createFolder(name: string): Promise<void> {
 		try {
 			sha = await github.createFile(path, '');
 		} catch {
-			// File already exists — fetch its sha
 			try {
 				const existing = await github.getFileContent(path);
 				sha = existing.sha;
 			} catch {
-				// GitHub unreachable — leave sha empty, sync queue will retry
-				const queue = await cache.getSyncQueue();
-				queue.push({ action: 'create', path, content: '', queuedAt: now });
-				await cache.saveSyncQueue(queue);
+				await queueOp({ action: 'create', path, content: '', queuedAt: now });
 			}
 		}
 		if (sha) {
@@ -254,9 +261,7 @@ export async function createFolder(name: string): Promise<void> {
 			await cache.saveNote(updated);
 		}
 	} else {
-		const queue = await cache.getSyncQueue();
-		queue.push({ action: 'create', path, content: '', queuedAt: now });
-		await cache.saveSyncQueue(queue);
+		await queueOp({ action: 'create', path, content: '', queuedAt: now });
 	}
 }
 
@@ -264,34 +269,56 @@ export async function renameFolder(oldName: string, newName: string): Promise<vo
 	const toMove = notes.filter((n) => n.path.startsWith(`${oldName}/`));
 	const now = new Date().toISOString();
 
-	for (const note of toMove) {
-		const newPath = `${newName}/${note.path.slice(oldName.length + 1)}`;
+	// Optimistic: rename all notes in store and cache immediately
+	const renamed: Note[] = toMove.map((n) => ({
+		...n,
+		path: `${newName}/${n.path.slice(oldName.length + 1)}`,
+		updatedAt: now
+	}));
+
+	for (let i = 0; i < toMove.length; i++) {
+		await cache.deleteNote(toMove[i].path);
+		await cache.saveNote(renamed[i]);
+	}
+	notes = [...notes.filter((n) => !n.path.startsWith(`${oldName}/`)), ...renamed];
+
+	// Sync to GitHub — each file is independent
+	for (let i = 0; i < toMove.length; i++) {
+		const original = toMove[i];
+		const newPath = renamed[i].path;
 
 		if (navigator.onLine && github) {
-			const sha = await github.createFile(newPath, note.content);
-			await github.deleteFile(note.path, note.sha);
-			const updated: Note = { ...note, path: newPath, updatedAt: now, sha };
-			await cache.saveNote(updated);
-			await cache.deleteNote(note.path);
-			notes = notes.map((n) => (n.path === note.path ? updated : n));
+			try {
+				const sha = await github.createFile(newPath, original.content);
+				if (original.sha) await github.deleteFile(original.path, original.sha);
+				const updated = { ...renamed[i], sha };
+				notes = notes.map((n) => (n.path === newPath ? updated : n));
+				await cache.saveNote(updated);
+			} catch {
+				await queueOp({
+					action: 'create',
+					path: newPath,
+					content: original.content,
+					queuedAt: now
+				});
+				if (original.sha)
+					await queueOp({
+						action: 'delete',
+						path: original.path,
+						sha: original.sha,
+						queuedAt: now
+					});
+			}
 		} else {
-			const queue = await cache.getSyncQueue();
-			queue.push({ action: 'create', path: newPath, content: note.content, queuedAt: now });
-			queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
-			await cache.saveSyncQueue(queue);
-			const updated: Note = { ...note, path: newPath, updatedAt: now };
-			await cache.saveNote(updated);
-			await cache.deleteNote(note.path);
-			notes = notes.map((n) => (n.path === note.path ? updated : n));
+			await queueOp({ action: 'create', path: newPath, content: original.content, queuedAt: now });
+			if (original.sha)
+				await queueOp({ action: 'delete', path: original.path, sha: original.sha, queuedAt: now });
 		}
 	}
 }
 
 export async function deleteFolder(name: string): Promise<void> {
 	const toDelete = notes.filter((n) => n.path.startsWith(`${name}/`));
-	console.log('[deleteFolder] name:', name);
-	console.log('[deleteFolder] all notes:', notes.map((n) => n.path));
-	console.log('[deleteFolder] toDelete:', toDelete.map((n) => n.path));
 	const now = new Date().toISOString();
 
 	// Optimistic: move real notes to trash and remove folder from store immediately
@@ -306,8 +333,6 @@ export async function deleteFolder(name: string): Promise<void> {
 		}
 	}
 	notes = [...notes.filter((n) => !n.path.startsWith(`${name}/`)), ...trashedNotes];
-	console.log('[deleteFolder] trashedNotes:', trashedNotes.map((n) => n.path));
-	console.log('[deleteFolder] notes after update:', notes.map((n) => n.path));
 
 	// Sync to GitHub — each note is independent, failures are queued for retry
 	for (const note of toDelete) {
@@ -316,7 +341,7 @@ export async function deleteFolder(name: string): Promise<void> {
 				try {
 					await github.deleteFile(note.path, note.sha);
 				} catch {
-					// sha may be stale — not critical, file will be cleaned up on next full sync
+					// stale sha — will be cleaned up on next full sync
 				}
 			}
 		} else {
@@ -324,23 +349,24 @@ export async function deleteFolder(name: string): Promise<void> {
 			if (navigator.onLine && github) {
 				try {
 					const sha = await github.createFile(trashPath, note.content);
+					if (note.sha) await github.deleteFile(note.path, note.sha);
 					const updated: Note = { ...note, path: trashPath, updatedAt: now, sha };
 					notes = notes.map((n) => (n.path === trashPath ? updated : n));
 					await cache.saveNote(updated);
-					if (note.sha) await github.deleteFile(note.path, note.sha);
 				} catch {
-					const queue = await cache.getSyncQueue();
-					queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+					await queueOp({
+						action: 'create',
+						path: trashPath,
+						content: note.content,
+						queuedAt: now
+					});
 					if (note.sha)
-						queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
-					await cache.saveSyncQueue(queue);
+						await queueOp({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
 				}
 			} else {
-				const queue = await cache.getSyncQueue();
-				queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+				await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
 				if (note.sha)
-					queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
-				await cache.saveSyncQueue(queue);
+					await queueOp({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
 			}
 		}
 	}
