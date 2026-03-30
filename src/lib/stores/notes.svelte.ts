@@ -289,6 +289,9 @@ export async function renameFolder(oldName: string, newName: string): Promise<vo
 
 export async function deleteFolder(name: string): Promise<void> {
 	const toDelete = notes.filter((n) => n.path.startsWith(`${name}/`));
+	console.log('[deleteFolder] name:', name);
+	console.log('[deleteFolder] all notes:', notes.map((n) => n.path));
+	console.log('[deleteFolder] toDelete:', toDelete.map((n) => n.path));
 	const now = new Date().toISOString();
 
 	// Optimistic: move real notes to trash and remove folder from store immediately
@@ -303,6 +306,8 @@ export async function deleteFolder(name: string): Promise<void> {
 		}
 	}
 	notes = [...notes.filter((n) => !n.path.startsWith(`${name}/`)), ...trashedNotes];
+	console.log('[deleteFolder] trashedNotes:', trashedNotes.map((n) => n.path));
+	console.log('[deleteFolder] notes after update:', notes.map((n) => n.path));
 
 	// Sync to GitHub — each note is independent, failures are queued for retry
 	for (const note of toDelete) {
