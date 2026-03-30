@@ -44,7 +44,11 @@ export function buildFolderTree(paths: string[]): Folder[] {
 		}
 	}
 
-	return roots.sort((a, b) => a.name.localeCompare(b.name));
+	return roots.sort((a, b) => {
+		if (a.name === '.trash') return 1;
+		if (b.name === '.trash') return -1;
+		return a.name.localeCompare(b.name);
+	});
 }
 
 // --- Reactive store ---
