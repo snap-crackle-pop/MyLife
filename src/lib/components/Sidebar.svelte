@@ -12,11 +12,16 @@
 
 	let adding = $state(false);
 	let newFolderName = $state('');
+	let inputEl = $state<HTMLInputElement | null>(null);
 
 	function startAdding() {
 		adding = true;
 		newFolderName = '';
 	}
+
+	$effect(() => {
+		if (adding && inputEl) inputEl.focus();
+	});
 
 	function confirmAdd() {
 		const name = newFolderName.trim();
@@ -81,9 +86,8 @@
 						<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
 					</svg>
 				</span>
-				<!-- svelte-ignore a11y_autofocus -->
 				<input
-					autofocus
+					bind:this={inputEl}
 					class="folder-name-input"
 					placeholder="folder name"
 					bind:value={newFolderName}
