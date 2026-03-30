@@ -223,15 +223,24 @@ export async function createFolder(name: string): Promise<void> {
 	};
 
 	if (navigator.onLine && github) {
-		note.sha = await github.createFile(path, '');
+		try {
+			note.sha = await github.createFile(path, '');
+		} catch {
+			// File already exists in GitHub — fetch its sha instead
+			const existing = await github.getFileContent(path);
+			note.sha = existing.sha;
+		}
 	} else {
 		const queue = await cache.getSyncQueue();
 		queue.push({ action: 'create', path, content: '', queuedAt: now });
 		await cache.saveSyncQueue(queue);
 	}
 
-	await cache.saveNote(note);
-	notes = [...notes, note];
+	// Don't add duplicate if already in store (e.g. synced from GitHub)
+	if (!notes.find((n) => n.path === path)) {
+		await cache.saveNote(note);
+		notes = [...notes, note];
+	}
 }
 
 export async function renameFolder(oldName: string, newName: string): Promise<void> {
