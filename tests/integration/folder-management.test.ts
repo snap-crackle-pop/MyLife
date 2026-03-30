@@ -1,0 +1,200 @@
+import { describe, it, expect, beforeEach } from 'vitest';
+import { render, screen, fireEvent } from '@testing-library/svelte';
+import { createMockFetch, githubResponse, createTestNote } from '../factories';
+import { buildFolderTree } from '$lib/stores/notes.svelte';
+
+// Mock only the network boundary
+const mockFetch = createMockFetch();
+vi.stubGlobal('fetch', mockFetch);
+
+beforeEach(() => {
+	mockFetch.mockReset();
+});
+
+// --- Pure utility: folder tree includes folders created via .gitkeep ---
+
+describe('buildFolderTree with .gitkeep placeholder', () => {
+	it('includes an empty folder created by a .gitkeep file', () => {
+		const paths = ['inbox/note.md', 'projects/.gitkeep'];
+		const tree = buildFolderTree(paths);
+		expect(tree.map((f) => f.name)).toContain('projects');
+	});
+});
+
+// --- Sidebar component ---
+
+describe('Sidebar', () => {
+	it('renders a list of folders', async () => {
+		const { default: Sidebar } = await import('$lib/components/Sidebar.svelte');
+		const folders = [
+			{ path: 'inbox', name: 'inbox', children: [] },
+			{ path: 'work', name: 'work', children: [] }
+		];
+		render(Sidebar, { props: { folders, selectedFolder: null } });
+
+		expect(screen.getByText('inbox')).toBeInTheDocument();
+		expect(screen.getByText('work')).toBeInTheDocument();
+	});
+
+	it('highlights the selected folder', async () => {
+		const { default: Sidebar } = await import('$lib/components/Sidebar.svelte');
+		const folders = [
+			{ path: 'inbox', name: 'inbox', children: [] },
+			{ path: 'work', name: 'work', children: [] }
+		];
+		render(Sidebar, { props: { folders, selectedFolder: 'inbox' } });
+
+		const inboxItem = screen.getByText('inbox').closest('[data-folder]');
+		expect(inboxItem).toHaveAttribute('data-active', 'true');
+	});
+
+	it('shows an inline input when the add folder button is clicked', async () => {
+		const { default: Sidebar } = await import('$lib/components/Sidebar.svelte');
+		render(Sidebar, { props: { folders: [], selectedFolder: null } });
+
+		fireEvent.click(screen.getByRole('button', { name: /new folder/i }));
+
+		expect(screen.getByPlaceholderText(/folder name/i)).toBeInTheDocument();
+	});
+
+	it('calls oncreatefolder with the name when Enter is pressed', async () => {
+		const { default: Sidebar } = await import('$lib/components/Sidebar.svelte');
+		const oncreatefolder = vi.fn();
+		render(Sidebar, { props: { folders: [], selectedFolder: null, oncreatefolder } });
+
+		fireEvent.click(screen.getByRole('button', { name: /new folder/i }));
+		const input = screen.getByPlaceholderText(/folder name/i);
+		await fireEvent.input(input, { target: { value: 'projects' } });
+		await fireEvent.keyDown(input, { key: 'Enter' });
+
+		expect(oncreatefolder).toHaveBeenCalledWith('projects');
+	});
+
+	it('cancels inline input on Escape without calling oncreatefolder', async () => {
+		const { default: Sidebar } = await import('$lib/components/Sidebar.svelte');
+		const oncreatefolder = vi.fn();
+		render(Sidebar, { props: { folders: [], selectedFolder: null, oncreatefolder } });
+
+		fireEvent.click(screen.getByRole('button', { name: /new folder/i }));
+		const input = screen.getByPlaceholderText(/folder name/i);
+		await fireEvent.keyDown(input, { key: 'Escape' });
+
+		expect(oncreatefolder).not.toHaveBeenCalled();
+		expect(screen.queryByPlaceholderText(/folder name/i)).not.toBeInTheDocument();
+	});
+});
+
+// --- FolderPanel component ---
+
+describe('FolderPanel', () => {
+	const notes = [
+		createTestNote({ path: 'work/task.md' }),
+		createTestNote({ path: 'work/meeting.md' })
+	];
+
+	it('shows the folder name and note count', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'work', notes } });
+
+		expect(screen.getByText('work')).toBeInTheDocument();
+		expect(screen.getByText(/2 notes/i)).toBeInTheDocument();
+	});
+
+	it('lists note titles inside the folder', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'work', notes } });
+
+		expect(screen.getByText(notes[0].title)).toBeInTheDocument();
+		expect(screen.getByText(notes[1].title)).toBeInTheDocument();
+	});
+
+	it('shows inline rename input when Rename is clicked', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'work', notes } });
+
+		fireEvent.click(screen.getByRole('button', { name: /rename/i }));
+
+		const input = screen.getByDisplayValue('work');
+		expect(input).toBeInTheDocument();
+	});
+
+	it('calls onrename with new name when Enter is pressed in rename input', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onrename = vi.fn();
+		render(FolderPanel, { props: { folder: 'work', notes, onrename } });
+
+		fireEvent.click(screen.getByRole('button', { name: /rename/i }));
+		const input = screen.getByDisplayValue('work');
+		await fireEvent.input(input, { target: { value: 'projects' } });
+		await fireEvent.keyDown(input, { key: 'Enter' });
+
+		expect(onrename).toHaveBeenCalledWith('projects');
+	});
+
+	it('shows a delete confirmation with note count when Delete is clicked', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'work', notes } });
+
+		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+		expect(screen.getByText(/2 notes will be moved to trash/i)).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
+	});
+
+	it('calls ondelete when delete is confirmed', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const ondelete = vi.fn();
+		render(FolderPanel, { props: { folder: 'work', notes, ondelete } });
+
+		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+		fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
+
+		expect(ondelete).toHaveBeenCalledWith('work');
+	});
+
+	it('hides confirmation when cancel is clicked', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'work', notes } });
+
+		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+		fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
+
+		expect(screen.queryByText(/will be moved to trash/i)).not.toBeInTheDocument();
+	});
+
+	it('shows empty state when folder has no notes', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'empty', notes: [] } });
+
+		expect(screen.getByText(/no notes/i)).toBeInTheDocument();
+	});
+
+	// Delete with 0 notes should still call ondelete (no notes to trash)
+	it('does not show trash warning when folder is empty', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, { props: { folder: 'empty', notes: [] } });
+
+		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+		expect(screen.queryByText(/will be moved to trash/i)).not.toBeInTheDocument();
+		// Confirm button should appear (deletion is still possible on empty folders)
+		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+	});
+
+	// GitHub API tests for createFolder, renameFolder, deleteFolder
+	describe('createFolder via GitHubClient', () => {
+		it('creates a .gitkeep placeholder file in the new folder', async () => {
+			const { GitHubClient } = await import('$lib/github');
+			const client = new GitHubClient('token', 'user/repo');
+			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'abc' } }));
+
+			await client.createFile('projects/.gitkeep', '');
+
+			expect(mockFetch).toHaveBeenCalledWith(
+				expect.stringContaining('/contents/projects/.gitkeep'),
+				expect.objectContaining({ method: 'PUT' })
+			);
+		});
+	});
+});

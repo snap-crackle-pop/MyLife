@@ -197,7 +197,7 @@ export async function togglePin(path: string) {
 export function getNotesInFolder(folder: string): Note[] {
 	return notes.filter((n) => {
 		const dir = n.path.substring(0, n.path.lastIndexOf('/'));
-		return dir === folder;
+		return dir === folder && !n.path.endsWith('.gitkeep');
 	});
 }
 
@@ -207,4 +207,92 @@ export function getPinnedNotes(): Note[] {
 
 export function getFolderTree(): Folder[] {
 	return buildFolderTree(notes.map((n) => n.path));
+}
+
+export async function createFolder(name: string): Promise<void> {
+	const path = `${name}/.gitkeep`;
+	const now = new Date().toISOString();
+	const note: Note = {
+		path,
+		title: '.gitkeep',
+		content: '',
+		type: 'text',
+		pinned: false,
+		updatedAt: now,
+		sha: ''
+	};
+
+	if (navigator.onLine && github) {
+		note.sha = await github.createFile(path, '');
+	} else {
+		const queue = await cache.getSyncQueue();
+		queue.push({ action: 'create', path, content: '', queuedAt: now });
+		await cache.saveSyncQueue(queue);
+	}
+
+	await cache.saveNote(note);
+	notes = [...notes, note];
+}
+
+export async function renameFolder(oldName: string, newName: string): Promise<void> {
+	const toMove = notes.filter((n) => n.path.startsWith(`${oldName}/`));
+	const now = new Date().toISOString();
+
+	for (const note of toMove) {
+		const newPath = `${newName}/${note.path.slice(oldName.length + 1)}`;
+
+		if (navigator.onLine && github) {
+			const sha = await github.createFile(newPath, note.content);
+			await github.deleteFile(note.path, note.sha);
+			const updated: Note = { ...note, path: newPath, updatedAt: now, sha };
+			await cache.saveNote(updated);
+			await cache.deleteNote(note.path);
+			notes = notes.map((n) => (n.path === note.path ? updated : n));
+		} else {
+			const queue = await cache.getSyncQueue();
+			queue.push({ action: 'create', path: newPath, content: note.content, queuedAt: now });
+			queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
+			await cache.saveSyncQueue(queue);
+			const updated: Note = { ...note, path: newPath, updatedAt: now };
+			await cache.saveNote(updated);
+			await cache.deleteNote(note.path);
+			notes = notes.map((n) => (n.path === note.path ? updated : n));
+		}
+	}
+}
+
+export async function deleteFolder(name: string): Promise<void> {
+	const toDelete = notes.filter((n) => n.path.startsWith(`${name}/`));
+	const now = new Date().toISOString();
+
+	for (const note of toDelete) {
+		if (note.path.endsWith('.gitkeep')) {
+			// Delete placeholder without trashing
+			if (navigator.onLine && github) {
+				await github.deleteFile(note.path, note.sha);
+			} else {
+				const queue = await cache.getSyncQueue();
+				queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
+				await cache.saveSyncQueue(queue);
+			}
+			await cache.deleteNote(note.path);
+		} else {
+			const trashPath = `.trash/${note.path.split('/').pop()}`;
+			if (navigator.onLine && github) {
+				await github.createFile(trashPath, note.content);
+				await github.deleteFile(note.path, note.sha);
+			} else {
+				const queue = await cache.getSyncQueue();
+				queue.push({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+				queue.push({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
+				await cache.saveSyncQueue(queue);
+			}
+			const trashed: Note = { ...note, path: trashPath, updatedAt: now };
+			await cache.saveNote(trashed);
+			await cache.deleteNote(note.path);
+			notes = [...notes.filter((n) => n.path !== note.path), trashed];
+			continue;
+		}
+		notes = notes.filter((n) => n.path !== note.path);
+	}
 }
