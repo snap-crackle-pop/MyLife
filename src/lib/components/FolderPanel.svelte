@@ -216,4 +216,18 @@
 		font-size: 13px;
 		color: var(--text-muted);
 	}
+
+	@media (max-width: 768px) {
+		.action-btn {
+			min-height: 44px;
+			padding: 10px 14px;
+		}
+
+		.note-item {
+			min-height: 44px;
+			padding: 10px 12px;
+			display: flex;
+			align-items: center;
+		}
+	}
 </style>
