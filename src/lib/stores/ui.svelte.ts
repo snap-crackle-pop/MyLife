@@ -1,4 +1,4 @@
-let sidebarOpen = $state(true);
+let sidebarOpen = $state(false);
 let sidebarCollapsed = $state(false);
 let selectedFolder = $state<string | null>(null);
 

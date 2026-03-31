@@ -8,15 +8,22 @@
 		renameFolder,
 		deleteFolder
 	} from '$lib/stores/notes.svelte';
-	import { getSelectedFolder, setSelectedFolder } from '$lib/stores/ui.svelte';
+	import {
+		getSelectedFolder,
+		setSelectedFolder,
+		getSidebarOpen,
+		setSidebarOpen
+	} from '$lib/stores/ui.svelte';
 
 	let folders = $derived(getFolderTree());
 	let selectedFolder = $derived(getSelectedFolder());
 	let folderNotes = $derived(selectedFolder ? getNotesInFolder(selectedFolder) : []);
+	let sidebarOpen = $derived(getSidebarOpen());
 
 	async function handleCreateFolder(name: string) {
 		await createFolder(name);
 		setSelectedFolder(name);
+		setSidebarOpen(false);
 	}
 
 	async function handleRename(newName: string) {
@@ -29,17 +36,47 @@
 		await deleteFolder(folder);
 		setSelectedFolder(null);
 	}
+
+	function handleSelectFolder(path: string) {
+		setSelectedFolder(path);
+		setSidebarOpen(false);
+	}
 </script>
 
 <div class="app">
 	<Sidebar
 		{folders}
 		{selectedFolder}
-		onselectfolder={setSelectedFolder}
+		isOpen={sidebarOpen}
+		onselectfolder={handleSelectFolder}
 		oncreatefolder={handleCreateFolder}
+		onclose={() => setSidebarOpen(false)}
 	/>
 
+	{#if sidebarOpen}
+		<!-- svelte-ignore a11y_click_events_have_key_events a11y_no_static_element_interactions -->
+		<div class="drawer-backdrop" onclick={() => setSidebarOpen(false)}></div>
+	{/if}
+
 	<main class="main">
+		<div class="mobile-header">
+			<button class="hamburger" onclick={() => setSidebarOpen(true)} aria-label="Open folders">
+				<svg
+					width="20"
+					height="20"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<line x1="3" y1="6" x2="21" y2="6" />
+					<line x1="3" y1="12" x2="21" y2="12" />
+					<line x1="3" y1="18" x2="21" y2="18" />
+				</svg>
+			</button>
+			<span class="app-title">MyLife</span>
+		</div>
+
 		{#if selectedFolder}
 			<FolderPanel
 				folder={selectedFolder}
@@ -58,7 +95,7 @@
 <style>
 	.app {
 		display: flex;
-		height: 100vh;
+		height: 100dvh;
 		overflow: hidden;
 	}
 
@@ -66,6 +103,15 @@
 		flex: 1;
 		overflow: hidden;
 		display: flex;
+		flex-direction: column;
+	}
+
+	.mobile-header {
+		display: none;
+	}
+
+	.drawer-backdrop {
+		display: none;
 	}
 
 	.empty-state {
@@ -75,5 +121,55 @@
 		justify-content: center;
 		color: var(--text-muted);
 		font-size: 14px;
+	}
+
+	@media (max-width: 768px) {
+		.app {
+			flex-direction: column;
+		}
+
+		.main {
+			overflow-y: auto;
+		}
+
+		.mobile-header {
+			display: flex;
+			align-items: center;
+			gap: 12px;
+			height: 48px;
+			padding: 0 4px 0 0;
+			background: var(--bg-overlay);
+			border-bottom: 1px solid var(--border);
+			flex-shrink: 0;
+		}
+
+		.hamburger {
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			width: 44px;
+			height: 44px;
+			color: var(--text-secondary);
+			border-radius: var(--radius);
+		}
+
+		.hamburger:hover {
+			background: var(--bg-surface);
+			color: var(--text-primary);
+		}
+
+		.app-title {
+			font-size: 15px;
+			font-weight: 600;
+			color: var(--text-primary);
+		}
+
+		.drawer-backdrop {
+			display: block;
+			position: fixed;
+			inset: 0;
+			background: rgba(0, 0, 0, 0.4);
+			z-index: 99;
+		}
 	}
 </style>
