@@ -26,10 +26,12 @@
 	let confirming = $state(false);
 
 	// Reset interaction state whenever the active folder changes
+	let prevFolder: string | null = null;
 	$effect(() => {
-		if (selectedFolder !== undefined) {
+		if (selectedFolder !== prevFolder) {
 			renaming = false;
 			confirming = false;
+			prevFolder = selectedFolder;
 		}
 	});
 
