@@ -53,7 +53,7 @@
 <nav class="sidebar" class:open={isOpen}>
 	<div class="sidebar-header">
 		<span class="sidebar-title">Folders</span>
-		<button class="close-btn" onclick={onclose} aria-label="Close folders">
+		<button class="close-btn" onclick={() => onclose?.()} aria-label="Close folders">
 			<svg
 				width="18"
 				height="18"
