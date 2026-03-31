@@ -4,11 +4,20 @@
 	interface Props {
 		folders: Folder[];
 		selectedFolder: string | null;
+		isOpen?: boolean;
 		onselectfolder?: (path: string) => void;
 		oncreatefolder?: (name: string) => void;
+		onclose?: () => void;
 	}
 
-	let { folders, selectedFolder, onselectfolder, oncreatefolder }: Props = $props();
+	let {
+		folders,
+		selectedFolder,
+		isOpen = false,
+		onselectfolder,
+		oncreatefolder,
+		onclose
+	}: Props = $props();
 
 	let adding = $state(false);
 	let newFolderName = $state('');
@@ -41,8 +50,23 @@
 	}
 </script>
 
-<nav class="sidebar">
-	<div class="sidebar-header">Folders</div>
+<nav class="sidebar" class:open={isOpen}>
+	<div class="sidebar-header">
+		<span class="sidebar-title">Folders</span>
+		<button class="close-btn" onclick={onclose} aria-label="Close folders">
+			<svg
+				width="18"
+				height="18"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke="currentColor"
+				stroke-width="2"
+			>
+				<line x1="18" y1="6" x2="6" y2="18" />
+				<line x1="6" y1="6" x2="18" y2="18" />
+			</svg>
+		</button>
+	</div>
 
 	<ul class="folder-list">
 		{#each folders as folder (folder.path)}
@@ -153,15 +177,6 @@
 		padding: 16px 0 0;
 	}
 
-	.sidebar-header {
-		font-size: 11px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--text-muted);
-		padding: 0 16px 10px;
-	}
-
 	.folder-list {
 		list-style: none;
 		flex: 1;
@@ -244,5 +259,66 @@
 	.trash-btn.active {
 		color: var(--accent);
 		background: var(--bg-surface);
+	}
+
+	.sidebar-header {
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
+		padding: 0 8px 10px 16px;
+	}
+
+	.sidebar-title {
+		font-size: 11px;
+		font-weight: 600;
+		text-transform: uppercase;
+		letter-spacing: 0.6px;
+		color: var(--text-muted);
+	}
+
+	.close-btn {
+		display: none;
+		align-items: center;
+		justify-content: center;
+		width: 44px;
+		height: 44px;
+		color: var(--text-muted);
+		border-radius: var(--radius);
+	}
+
+	.close-btn:hover {
+		background: var(--bg-surface);
+		color: var(--text-primary);
+	}
+
+	@media (max-width: 768px) {
+		.sidebar {
+			position: fixed;
+			top: 0;
+			left: 0;
+			height: 100%;
+			width: 280px;
+			z-index: 100;
+			transform: translateX(-100%);
+			transition: transform 200ms ease;
+		}
+
+		.sidebar.open {
+			transform: translateX(0);
+		}
+
+		.close-btn {
+			display: flex;
+		}
+
+		.folder-item {
+			min-height: 44px;
+			padding: 10px 16px;
+		}
+
+		.action-btn {
+			min-height: 44px;
+			padding: 10px 8px;
+		}
 	}
 </style>
