@@ -2,12 +2,15 @@ import { test, expect, type Page } from '@playwright/test';
 
 const REPO = 'testuser/mylife-notes';
 
+interface MockFile {
+	path: string;
+	content: string;
+	sha: string;
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
-async function mockGitHub(
-	page: Page,
-	files: { path: string; content: string; sha: string }[] = []
-) {
+async function mockGitHub(page: Page, files: MockFile[] = []) {
 	await page.route('https://api.github.com/**', (route) => {
 		const url = route.request().url();
 		const method = route.request().method();
@@ -52,7 +55,7 @@ async function mockGitHub(
 	});
 }
 
-async function setupApp(page: Page, files: { path: string; content: string; sha: string }[] = []) {
+async function setupApp(page: Page, files: MockFile[] = []) {
 	await mockGitHub(page, files);
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/setup/, { timeout: 5000 });
