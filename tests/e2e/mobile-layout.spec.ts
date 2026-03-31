@@ -207,4 +207,20 @@ test.describe('mobile layout', () => {
 		await expect(page.getByRole('heading', { name: 'journal' })).toBeVisible();
 		await expect(page.getByRole('button', { name: 'Rename' })).not.toBeVisible();
 	});
+
+	test('cancelling delete restores rename and delete buttons in header', async ({ page }) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		await page.getByRole('button', { name: 'Delete' }).click();
+		await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+
+		await page.getByRole('button', { name: 'Cancel', exact: true }).click();
+
+		// Rename and Delete buttons reappear
+		await expect(page.getByRole('button', { name: 'Rename' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+	});
 });
