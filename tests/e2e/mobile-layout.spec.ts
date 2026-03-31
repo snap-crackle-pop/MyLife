@@ -132,4 +132,79 @@ test.describe('mobile layout', () => {
 		await page.mouse.click(350, 400);
 		await expect(page.getByRole('navigation')).not.toBeInViewport();
 	});
+
+	test('mobile header shows folder name when folder is selected', async ({ page }) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		// Folder name appears in header bar (not "MyLife")
+		const heading = page.getByRole('heading', { name: 'journal' });
+		await expect(heading).toBeVisible();
+		await expect(page.locator('.app-title').filter({ hasText: 'MyLife' })).not.toBeVisible();
+	});
+
+	test('mobile header shows rename and delete icon buttons when folder is selected', async ({
+		page
+	}) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		await expect(page.getByRole('button', { name: 'Rename' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Delete' })).toBeVisible();
+	});
+
+	test('tapping rename icon shows inline input in mobile header', async ({ page }) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		await page.getByRole('button', { name: 'Rename' }).click();
+
+		// Rename input appears in header with current folder name pre-filled
+		const input = page.locator('.mobile-rename-input');
+		await expect(input).toBeVisible();
+		await expect(input).toHaveValue('journal');
+
+		// Confirm and cancel icons appear
+		await expect(page.getByRole('button', { name: 'Confirm rename' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Cancel rename' })).toBeVisible();
+	});
+
+	test('confirming rename updates the folder name in mobile header', async ({ page }) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		await page.getByRole('button', { name: 'Rename' }).click();
+
+		const input = page.locator('.mobile-rename-input');
+		await input.fill('diary');
+		await input.press('Enter');
+
+		// Header shows new name
+		await expect(page.getByRole('heading', { name: 'diary' })).toBeVisible();
+	});
+
+	test('tapping delete icon shows confirm bar', async ({ page }) => {
+		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+
+		await page.getByRole('button', { name: 'Open folders' }).click();
+		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
+
+		await page.getByRole('button', { name: 'Delete' }).click();
+
+		// Confirm bar appears below header
+		await expect(page.getByRole('button', { name: 'Confirm', exact: true })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Cancel', exact: true })).toBeVisible();
+
+		// Folder name still visible in header (not icons)
+		await expect(page.getByRole('heading', { name: 'journal' })).toBeVisible();
+		await expect(page.getByRole('button', { name: 'Rename' })).not.toBeVisible();
+	});
 });
