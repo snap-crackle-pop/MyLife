@@ -94,6 +94,32 @@
 					{folder.name}
 				</button>
 			</li>
+			{#each folder.children as child (child.path)}
+				<li>
+					<button
+						class="folder-item subfolder-item"
+						data-folder={child.path}
+						data-active={selectedFolder === child.path}
+						onclick={() => onselectfolder?.(child.path)}
+					>
+						<span class="folder-icon">
+							<svg
+								width="12"
+								height="12"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+								/>
+							</svg>
+						</span>
+						{child.name}
+					</button>
+				</li>
+			{/each}
 		{/each}
 
 		{#if adding}
@@ -205,6 +231,11 @@
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		border-right: 2px solid var(--accent);
+	}
+
+	.subfolder-item {
+		padding-left: 32px;
+		font-size: 12px;
 	}
 
 	.folder-add-row {
