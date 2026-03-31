@@ -133,7 +133,12 @@
 					}}
 					onblur={cancelRename}
 				/>
-				<button class="header-icon-btn confirm" onclick={confirmRename} aria-label="Confirm rename">
+				<button
+					class="header-icon-btn confirm"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={confirmRename}
+					aria-label="Confirm rename"
+				>
 					<svg
 						width="18"
 						height="18"
@@ -323,6 +328,7 @@
 			font-size: 15px;
 			font-weight: 600;
 			color: var(--text-primary);
+			flex: 1;
 		}
 
 		.drawer-backdrop {
