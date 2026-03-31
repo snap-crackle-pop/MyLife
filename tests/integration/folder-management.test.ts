@@ -94,7 +94,9 @@ describe('FolderPanel', () => {
 
 	it('shows the folder name and note count', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'work', notes } });
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+		});
 
 		expect(screen.getByText('work')).toBeInTheDocument();
 		expect(screen.getByText(/2 notes/i)).toBeInTheDocument();
@@ -102,83 +104,186 @@ describe('FolderPanel', () => {
 
 	it('lists note titles inside the folder', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'work', notes } });
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+		});
 
 		expect(screen.getByText(notes[0].title)).toBeInTheDocument();
 		expect(screen.getByText(notes[1].title)).toBeInTheDocument();
 	});
 
-	it('shows inline rename input when Rename is clicked', async () => {
+	it('calls onstartrename when Rename button is clicked', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'work', notes } });
+		const onstartrename = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				onstartrename
+			}
+		});
 
 		fireEvent.click(screen.getByRole('button', { name: /rename/i }));
 
-		const input = screen.getByDisplayValue('work');
-		expect(input).toBeInTheDocument();
+		expect(onstartrename).toHaveBeenCalledOnce();
 	});
 
-	it('calls onrename with new name when Enter is pressed in rename input', async () => {
+	it('shows rename input when renaming prop is true', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		const onrename = vi.fn();
-		render(FolderPanel, { props: { folder: 'work', notes, onrename } });
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: true, renameName: 'work', confirming: false }
+		});
 
-		fireEvent.click(screen.getByRole('button', { name: /rename/i }));
+		expect(screen.getByDisplayValue('work')).toBeInTheDocument();
+	});
+
+	it('calls onrenameinput with new value when rename input changes', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onrenameinput = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: true,
+				renameName: 'work',
+				confirming: false,
+				onrenameinput
+			}
+		});
+
 		const input = screen.getByDisplayValue('work');
 		await fireEvent.input(input, { target: { value: 'projects' } });
-		await fireEvent.keyDown(input, { key: 'Enter' });
 
-		expect(onrename).toHaveBeenCalledWith('projects');
+		expect(onrenameinput).toHaveBeenCalledWith('projects');
 	});
 
-	it('shows a delete confirmation with note count when Delete is clicked', async () => {
+	it('calls onconfirmrename when Enter is pressed in rename input', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'work', notes } });
+		const onconfirmrename = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: true,
+				renameName: 'projects',
+				confirming: false,
+				onconfirmrename
+			}
+		});
+
+		const input = screen.getByDisplayValue('projects');
+		await fireEvent.keyDown(input, { key: 'Enter' });
+
+		expect(onconfirmrename).toHaveBeenCalledOnce();
+	});
+
+	it('calls oncancelrename when Escape is pressed in rename input', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const oncancelrename = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: true,
+				renameName: 'work',
+				confirming: false,
+				oncancelrename
+			}
+		});
+
+		const input = screen.getByDisplayValue('work');
+		await fireEvent.keyDown(input, { key: 'Escape' });
+
+		expect(oncancelrename).toHaveBeenCalledOnce();
+	});
+
+	it('calls onstartdelete when Delete button is clicked', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onstartdelete = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				onstartdelete
+			}
+		});
 
 		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+
+		expect(onstartdelete).toHaveBeenCalledOnce();
+	});
+
+	it('shows delete confirmation when confirming prop is true', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: true }
+		});
 
 		expect(screen.getByText(/2 notes will be moved to trash/i)).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
 	});
 
-	it('calls ondelete when delete is confirmed', async () => {
+	it('calls onconfirmdelete when Confirm is clicked', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		const ondelete = vi.fn();
-		render(FolderPanel, { props: { folder: 'work', notes, ondelete } });
+		const onconfirmdelete = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: true,
+				onconfirmdelete
+			}
+		});
 
-		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
 		fireEvent.click(screen.getByRole('button', { name: /confirm/i }));
 
-		expect(ondelete).toHaveBeenCalledWith('work');
+		expect(onconfirmdelete).toHaveBeenCalledOnce();
 	});
 
-	it('hides confirmation when cancel is clicked', async () => {
+	it('calls oncanceldelete when Cancel is clicked', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'work', notes } });
+		const oncanceldelete = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: true,
+				oncanceldelete
+			}
+		});
 
-		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
 		fireEvent.click(screen.getByRole('button', { name: /cancel/i }));
 
-		expect(screen.queryByText(/will be moved to trash/i)).not.toBeInTheDocument();
+		expect(oncanceldelete).toHaveBeenCalledOnce();
 	});
 
 	it('shows empty state when folder has no notes', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'empty', notes: [] } });
+		render(FolderPanel, {
+			props: { folder: 'empty', notes: [], renaming: false, renameName: '', confirming: false }
+		});
 
 		expect(screen.getByText(/no notes/i)).toBeInTheDocument();
 	});
 
-	// Delete with 0 notes should still call ondelete (no notes to trash)
 	it('does not show trash warning when folder is empty', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, { props: { folder: 'empty', notes: [] } });
-
-		fireEvent.click(screen.getByRole('button', { name: /delete/i }));
+		render(FolderPanel, {
+			props: { folder: 'empty', notes: [], renaming: false, renameName: '', confirming: true }
+		});
 
 		expect(screen.queryByText(/will be moved to trash/i)).not.toBeInTheDocument();
-		// Confirm button should appear (deletion is still possible on empty folders)
 		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
 	});
 

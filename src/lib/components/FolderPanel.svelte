@@ -4,43 +4,36 @@
 	interface Props {
 		folder: string;
 		notes: Note[];
-		onrename?: (newName: string) => void;
-		ondelete?: (folder: string) => void;
+		renaming: boolean;
+		renameName: string;
+		confirming: boolean;
+		onstartrename?: () => void;
+		onstartdelete?: () => void;
+		onrenameinput?: (value: string) => void;
+		onconfirmrename?: () => void;
+		oncancelrename?: () => void;
+		onconfirmdelete?: () => void;
+		oncanceldelete?: () => void;
 	}
 
-	let { folder, notes, onrename, ondelete }: Props = $props();
-
-	let renaming = $state(false);
-	let renameName = $state('');
-	let confirming = $state(false);
-
-	function startRename() {
-		renameName = folder.split('/').pop() ?? folder;
-		renaming = true;
-		confirming = false;
-	}
-
-	function confirmRename() {
-		const name = renameName.trim();
-		if (name && name !== folder) onrename?.(name);
-		renaming = false;
-	}
+	let {
+		folder,
+		notes,
+		renaming,
+		renameName,
+		confirming,
+		onstartrename,
+		onstartdelete,
+		onrenameinput,
+		onconfirmrename,
+		oncancelrename,
+		onconfirmdelete,
+		oncanceldelete
+	}: Props = $props();
 
 	function handleRenameKey(e: KeyboardEvent) {
-		if (e.key === 'Enter') confirmRename();
-		if (e.key === 'Escape') {
-			renaming = false;
-		}
-	}
-
-	function startDelete() {
-		confirming = true;
-		renaming = false;
-	}
-
-	async function confirmDelete() {
-		confirming = false;
-		await ondelete?.(folder);
+		if (e.key === 'Enter') onconfirmrename?.();
+		if (e.key === 'Escape') oncancelrename?.();
 	}
 
 	const realNotes = $derived(notes.filter((n) => !n.path.endsWith('.gitkeep')));
@@ -53,9 +46,9 @@
 			<input
 				class="rename-input"
 				value={renameName}
-				oninput={(e) => (renameName = (e.target as HTMLInputElement).value)}
+				oninput={(e) => onrenameinput?.((e.target as HTMLInputElement).value)}
 				onkeydown={handleRenameKey}
-				onblur={() => (renaming = false)}
+				onblur={() => oncancelrename?.()}
 			/>
 		{:else}
 			<h2 class="folder-title">{folderDisplayName}</h2>
@@ -63,8 +56,9 @@
 
 		<div class="actions">
 			{#if !renaming && !confirming}
-				<button class="action-btn" onclick={startRename} aria-label="Rename">Rename</button>
-				<button class="action-btn danger" onclick={startDelete} aria-label="Delete">Delete</button>
+				<button class="action-btn" onclick={onstartrename} aria-label="Rename">Rename</button>
+				<button class="action-btn danger" onclick={onstartdelete} aria-label="Delete">Delete</button
+				>
 			{/if}
 		</div>
 	</header>
@@ -80,11 +74,10 @@
 			{:else}
 				<span class="confirm-msg">Delete <strong>{folderDisplayName}</strong>?</span>
 			{/if}
-			<button class="action-btn danger" onclick={confirmDelete} aria-label="Confirm">Confirm</button
+			<button class="action-btn danger" onclick={onconfirmdelete} aria-label="Confirm"
+				>Confirm</button
 			>
-			<button class="action-btn" onclick={() => (confirming = false)} aria-label="Cancel"
-				>Cancel</button
-			>
+			<button class="action-btn" onclick={oncanceldelete} aria-label="Cancel">Cancel</button>
 		</div>
 	{/if}
 
@@ -218,6 +211,10 @@
 	}
 
 	@media (max-width: 768px) {
+		.panel-header {
+			display: none;
+		}
+
 		.action-btn {
 			min-height: 44px;
 			padding: 10px 14px;

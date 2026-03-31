@@ -20,6 +20,49 @@
 	let folderNotes = $derived(selectedFolder ? getNotesInFolder(selectedFolder) : []);
 	let sidebarOpen = $derived(getSidebarOpen());
 
+	// Rename / confirm state owned here so the mobile header can drive it
+	let renaming = $state(false);
+	let renameName = $state('');
+	let confirming = $state(false);
+
+	// Reset interaction state whenever the active folder changes
+	$effect(() => {
+		if (selectedFolder !== undefined) {
+			renaming = false;
+			confirming = false;
+		}
+	});
+
+	function startRename() {
+		renameName = selectedFolder?.split('/').pop() ?? '';
+		renaming = true;
+		confirming = false;
+	}
+
+	function confirmRename() {
+		const name = renameName.trim();
+		if (name && name !== selectedFolder?.split('/').pop()) handleRename(name);
+		renaming = false;
+	}
+
+	function cancelRename() {
+		renaming = false;
+	}
+
+	function startDelete() {
+		confirming = true;
+		renaming = false;
+	}
+
+	function cancelDelete() {
+		confirming = false;
+	}
+
+	async function confirmDelete() {
+		confirming = false;
+		if (selectedFolder) await handleDelete(selectedFolder);
+	}
+
 	async function handleCreateFolder(name: string) {
 		await createFolder(name);
 		setSelectedFolder(name);
@@ -81,8 +124,16 @@
 			<FolderPanel
 				folder={selectedFolder}
 				notes={folderNotes}
-				onrename={handleRename}
-				ondelete={handleDelete}
+				{renaming}
+				{renameName}
+				{confirming}
+				onstartrename={startRename}
+				onstartdelete={startDelete}
+				onrenameinput={(v) => (renameName = v)}
+				onconfirmrename={confirmRename}
+				oncancelrename={cancelRename}
+				onconfirmdelete={confirmDelete}
+				oncanceldelete={cancelDelete}
 			/>
 		{:else}
 			<div class="empty-state">
