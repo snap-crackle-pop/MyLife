@@ -3,7 +3,7 @@
 
 	interface Props {
 		folder: string;
-		notes: Note[];
+		note: Note | null;
 		renaming: boolean;
 		renameName: string;
 		confirming: boolean;
@@ -20,11 +20,12 @@
 		onsubfolderinput?: (value: string) => void;
 		onconfirmsubfolder?: () => void;
 		oncancelsubfolder?: () => void;
+		onsave?: (content: string) => void;
 	}
 
 	let {
 		folder,
-		notes,
+		note,
 		renaming,
 		renameName,
 		confirming,
@@ -40,7 +41,8 @@
 		oncanceldelete,
 		onsubfolderinput,
 		onconfirmsubfolder,
-		oncancelsubfolder
+		oncancelsubfolder,
+		onsave
 	}: Props = $props();
 
 	function handleRenameKey(e: KeyboardEvent) {
@@ -53,7 +55,6 @@
 		if (e.key === 'Escape') oncancelsubfolder?.();
 	}
 
-	const realNotes = $derived(notes.filter((n) => !n.path.endsWith('.gitkeep')));
 	const folderDisplayName = $derived(folder.split('/').pop() ?? folder);
 	const isTopLevel = $derived(!folder.includes('/'));
 
@@ -62,6 +63,24 @@
 	$effect(() => {
 		if (addingSubfolder && subfolderInputEl) subfolderInputEl.focus();
 	});
+
+	let saveTimer: ReturnType<typeof setTimeout> | null = null;
+
+	$effect(() => {
+		void folder;
+		if (saveTimer) {
+			clearTimeout(saveTimer);
+			saveTimer = null;
+		}
+	});
+
+	function handleInput(e: Event) {
+		const value = (e.target as HTMLTextAreaElement).value;
+		if (saveTimer) clearTimeout(saveTimer);
+		saveTimer = setTimeout(() => {
+			onsave?.(value);
+		}, 800);
+	}
 </script>
 
 <div class="panel">
@@ -174,15 +193,7 @@
 
 	{#if confirming}
 		<div class="confirm-bar">
-			{#if realNotes.length > 0}
-				<span class="confirm-msg">
-					{realNotes.length}
-					{realNotes.length === 1 ? 'note' : 'notes'} will be permanently deleted. Delete
-					<strong>{folderDisplayName}</strong>?
-				</span>
-			{:else}
-				<span class="confirm-msg">Delete <strong>{folderDisplayName}</strong>?</span>
-			{/if}
+			<span class="confirm-msg">Delete <strong>{folderDisplayName}</strong>?</span>
 			<button class="action-btn danger" onclick={onconfirmdelete} aria-label="Confirm"
 				>Confirm</button
 			>
@@ -190,17 +201,12 @@
 		</div>
 	{/if}
 
-	<div class="note-count">{realNotes.length} {realNotes.length === 1 ? 'note' : 'notes'}</div>
-
-	{#if realNotes.length === 0}
-		<p class="empty">No notes in this folder yet.</p>
-	{:else}
-		<ul class="note-list">
-			{#each realNotes as note (note.path)}
-				<li class="note-item">{note.title}</li>
-			{/each}
-		</ul>
-	{/if}
+	<textarea
+		class="note-editor"
+		value={note?.content ?? ''}
+		oninput={handleInput}
+		placeholder="Start writing..."
+	></textarea>
 </div>
 
 <style>
@@ -341,35 +347,22 @@
 		color: var(--text-secondary);
 	}
 
-	.note-count {
-		padding: 12px 24px 4px;
-		font-size: 12px;
-		color: var(--text-muted);
-	}
-
-	.note-list {
-		list-style: none;
-		padding: 8px 16px;
-		overflow-y: auto;
+	.note-editor {
 		flex: 1;
-	}
-
-	.note-item {
-		padding: 8px 12px;
-		font-size: 13px;
-		color: var(--text-secondary);
-		border-radius: var(--radius);
-		margin-bottom: 2px;
-		background: var(--bg-base);
-	}
-
-	.note-item:hover {
+		width: 100%;
+		padding: 16px 24px;
+		background: var(--bg-surface);
+		border: none;
+		resize: none;
+		font-family: inherit;
+		font-size: 14px;
+		line-height: 1.6;
 		color: var(--text-primary);
+		outline: none;
+		box-sizing: border-box;
 	}
 
-	.empty {
-		padding: 24px;
-		font-size: 13px;
+	.note-editor::placeholder {
 		color: var(--text-muted);
 	}
 
@@ -387,13 +380,6 @@
 			min-height: 44px;
 			width: 44px;
 			padding: 0;
-		}
-
-		.note-item {
-			min-height: 44px;
-			padding: 10px 12px;
-			display: flex;
-			align-items: center;
 		}
 	}
 </style>

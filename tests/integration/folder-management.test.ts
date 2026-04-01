@@ -11,11 +11,11 @@ beforeEach(() => {
 	mockFetch.mockReset();
 });
 
-// --- Pure utility: folder tree includes folders created via .gitkeep ---
+// --- Pure utility: folder tree includes folders created via index.md ---
 
-describe('buildFolderTree with .gitkeep placeholder', () => {
-	it('includes an empty folder created by a .gitkeep file', () => {
-		const paths = ['inbox/note.md', 'projects/.gitkeep'];
+describe('buildFolderTree with index.md placeholder', () => {
+	it('includes an empty folder created by an index.md file', () => {
+		const paths = ['inbox/note.md', 'projects/index.md'];
 		const tree = buildFolderTree(paths);
 		expect(tree.map((f) => f.name)).toContain('projects');
 	});
@@ -87,30 +87,7 @@ describe('Sidebar', () => {
 // --- FolderPanel component ---
 
 describe('FolderPanel', () => {
-	const notes = [
-		createTestNote({ path: 'work/task.md' }),
-		createTestNote({ path: 'work/meeting.md' })
-	];
-
-	it('shows the folder name and note count', async () => {
-		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
-		});
-
-		expect(screen.getByText('work')).toBeInTheDocument();
-		expect(screen.getByText(/2 notes/i)).toBeInTheDocument();
-	});
-
-	it('lists note titles inside the folder', async () => {
-		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
-		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
-		});
-
-		expect(screen.getByText(notes[0].title)).toBeInTheDocument();
-		expect(screen.getByText(notes[1].title)).toBeInTheDocument();
-	});
+	const note = createTestNote({ path: 'work/index.md', content: 'hello' });
 
 	it('calls onstartrename when Rename button is clicked', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
@@ -118,7 +95,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -134,7 +111,7 @@ describe('FolderPanel', () => {
 	it('shows rename input when renaming prop is true', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
 		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: true, renameName: 'work', confirming: false }
+			props: { folder: 'work', note, renaming: true, renameName: 'work', confirming: false }
 		});
 
 		expect(screen.getByDisplayValue('work')).toBeInTheDocument();
@@ -146,7 +123,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: true,
 				renameName: 'work',
 				confirming: false,
@@ -166,7 +143,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: true,
 				renameName: 'projects',
 				confirming: false,
@@ -186,7 +163,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: true,
 				renameName: 'work',
 				confirming: false,
@@ -206,7 +183,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -222,10 +199,10 @@ describe('FolderPanel', () => {
 	it('shows delete confirmation when confirming prop is true', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
 		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: true }
+			props: { folder: 'work', note, renaming: false, renameName: '', confirming: true }
 		});
 
-		expect(screen.getByText(/2 notes will be permanently deleted/i)).toBeInTheDocument();
+		expect(screen.getByText(/delete/i)).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
 	});
@@ -236,7 +213,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: false,
 				renameName: '',
 				confirming: true,
@@ -255,7 +232,7 @@ describe('FolderPanel', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note,
 				renaming: false,
 				renameName: '',
 				confirming: true,
@@ -268,23 +245,61 @@ describe('FolderPanel', () => {
 		expect(oncanceldelete).toHaveBeenCalledOnce();
 	});
 
-	it('shows empty state when folder has no notes', async () => {
+	it('renders a textarea with the note content', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const n = createTestNote({ path: 'work/index.md', content: 'my notes here' });
 		render(FolderPanel, {
-			props: { folder: 'empty', notes: [], renaming: false, renameName: '', confirming: false }
+			props: { folder: 'work', note: n, renaming: false, renameName: '', confirming: false }
 		});
 
-		expect(screen.getByText(/no notes/i)).toBeInTheDocument();
+		expect(screen.getByRole('textbox')).toHaveValue('my notes here');
 	});
 
-	it('does not show trash warning when folder is empty', async () => {
+	it('renders an empty textarea when note is null', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
 		render(FolderPanel, {
-			props: { folder: 'empty', notes: [], renaming: false, renameName: '', confirming: true }
+			props: { folder: 'work', note: null, renaming: false, renameName: '', confirming: false }
 		});
 
-		expect(screen.queryByText(/will be permanently deleted/i)).not.toBeInTheDocument();
-		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
+		expect(screen.getByRole('textbox')).toHaveValue('');
+	});
+
+	it('calls onsave 800ms after typing stops', async () => {
+		vi.useFakeTimers();
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onsave = vi.fn();
+		const n = createTestNote({ path: 'work/index.md', content: '' });
+		render(FolderPanel, {
+			props: { folder: 'work', note: n, renaming: false, renameName: '', confirming: false, onsave }
+		});
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'hello world' } });
+		expect(onsave).not.toHaveBeenCalled();
+
+		vi.advanceTimersByTime(800);
+		expect(onsave).toHaveBeenCalledWith('hello world');
+
+		vi.useRealTimers();
+	});
+
+	it('debounces rapid typing — only calls onsave once', async () => {
+		vi.useFakeTimers();
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onsave = vi.fn();
+		const n = createTestNote({ path: 'work/index.md', content: '' });
+		render(FolderPanel, {
+			props: { folder: 'work', note: n, renaming: false, renameName: '', confirming: false, onsave }
+		});
+
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'h' } });
+		vi.advanceTimersByTime(400);
+		await fireEvent.input(screen.getByRole('textbox'), { target: { value: 'hello' } });
+		vi.advanceTimersByTime(800);
+
+		expect(onsave).toHaveBeenCalledTimes(1);
+		expect(onsave).toHaveBeenCalledWith('hello');
+
+		vi.useRealTimers();
 	});
 
 	// GitHub API tests for createFolder, renameFolder, deleteFolder

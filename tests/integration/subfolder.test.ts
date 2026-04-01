@@ -83,22 +83,10 @@ describe('Sidebar with sub-folders', () => {
 // ── FolderPanel sub-folder UI ─────────────────────────────────────────────────
 
 describe('FolderPanel sub-folder actions', () => {
-	const notes = [
-		{
-			path: 'work/a.md',
-			title: 'A',
-			content: '',
-			type: 'text' as const,
-			pinned: false,
-			updatedAt: '',
-			sha: ''
-		}
-	];
-
 	it('shows icon buttons for rename and delete (aria-labels)', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
 		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+			props: { folder: 'work', note: null, renaming: false, renameName: '', confirming: false }
 		});
 
 		expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument();
@@ -108,7 +96,7 @@ describe('FolderPanel sub-folder actions', () => {
 	it('shows add sub-folder button for a top-level folder', async () => {
 		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
 		render(FolderPanel, {
-			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+			props: { folder: 'work', note: null, renaming: false, renameName: '', confirming: false }
 		});
 
 		expect(screen.getByRole('button', { name: 'Add sub-folder' })).toBeInTheDocument();
@@ -119,7 +107,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work/projects',
-				notes: [],
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false
@@ -135,7 +123,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -153,7 +141,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -170,7 +158,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -190,7 +178,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -211,7 +199,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,
@@ -232,7 +220,7 @@ describe('FolderPanel sub-folder actions', () => {
 		render(FolderPanel, {
 			props: {
 				folder: 'work',
-				notes,
+				note: null,
 				renaming: false,
 				renameName: '',
 				confirming: false,

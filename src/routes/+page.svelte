@@ -3,7 +3,7 @@
 	import FolderPanel from '$lib/components/FolderPanel.svelte';
 	import {
 		getFolderTree,
-		getNotesInFolder,
+		getFolderNote,
 		createFolder,
 		renameFolder,
 		deleteFolder
@@ -17,7 +17,7 @@
 
 	let folders = $derived(getFolderTree());
 	let selectedFolder = $derived(getSelectedFolder());
-	let folderNotes = $derived(selectedFolder ? getNotesInFolder(selectedFolder) : []);
+	let folderNote = $derived(selectedFolder ? getFolderNote(selectedFolder) : null);
 	let sidebarOpen = $derived(getSidebarOpen());
 
 	// Rename / confirm / sub-folder state owned here so both desktop and mobile header can drive it
@@ -251,7 +251,7 @@
 		{#if selectedFolder}
 			<FolderPanel
 				folder={selectedFolder}
-				notes={folderNotes}
+				note={folderNote}
 				{renaming}
 				{renameName}
 				{confirming}
