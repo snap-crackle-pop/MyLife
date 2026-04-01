@@ -25,13 +25,13 @@ afterEach(() => {
 // ── createFolder ──────────────────────────────────────────────────────────────
 
 describe('createFolder', () => {
-	it('adds .gitkeep placeholder to store immediately', async () => {
+	it('adds index.md placeholder to store immediately', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }));
 
 		await store.createFolder('projects');
 
 		const notes = store.getNotes();
-		expect(notes.some((n) => n.path === 'projects/.gitkeep')).toBe(true);
+		expect(notes.some((n) => n.path === 'projects/index.md')).toBe(true);
 	});
 
 	it('folder appears in getFolderTree after creation', async () => {
@@ -43,12 +43,12 @@ describe('createFolder', () => {
 		expect(tree.some((f) => f.name === 'reading')).toBe(true);
 	});
 
-	it('patches .gitkeep SHA after API succeeds', async () => {
+	it('patches index.md SHA after API succeeds', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'real-sha' } }));
 
 		await store.createFolder('ideas');
 
-		const gk = store.getNotes().find((n) => n.path === 'ideas/.gitkeep');
+		const gk = store.getNotes().find((n) => n.path === 'ideas/index.md');
 		expect(gk?.sha).toBe('real-sha');
 	});
 
@@ -59,10 +59,10 @@ describe('createFolder', () => {
 
 		await store.createFolder('drafts');
 
-		expect(store.getNotes().some((n) => n.path === 'drafts/.gitkeep')).toBe(true);
+		expect(store.getNotes().some((n) => n.path === 'drafts/index.md')).toBe(true);
 
 		const queue = await testCache.getSyncQueue();
-		expect(queue.some((q) => q.action === 'create' && q.path === 'drafts/.gitkeep')).toBe(true);
+		expect(queue.some((q) => q.action === 'create' && q.path === 'drafts/index.md')).toBe(true);
 	});
 
 	it('queues op and skips API when offline', async () => {
@@ -73,10 +73,10 @@ describe('createFolder', () => {
 		expect(mockFetch).not.toHaveBeenCalled();
 
 		const queue = await testCache.getSyncQueue();
-		expect(queue.some((q) => q.path === 'offline-folder/.gitkeep')).toBe(true);
+		expect(queue.some((q) => q.path === 'offline-folder/index.md')).toBe(true);
 	});
 
-	it('does not add duplicate .gitkeep if folder already exists', async () => {
+	it('does not add duplicate index.md if folder already exists', async () => {
 		mockFetch
 			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
 			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
@@ -84,8 +84,8 @@ describe('createFolder', () => {
 		await store.createFolder('dedupe');
 		await store.createFolder('dedupe');
 
-		const gkNotes = store.getNotes().filter((n) => n.path === 'dedupe/.gitkeep');
-		expect(gkNotes.length).toBe(1);
+		const idxNotes = store.getNotes().filter((n) => n.path === 'dedupe/index.md');
+		expect(idxNotes.length).toBe(1);
 	});
 });
 
@@ -95,7 +95,7 @@ describe('renameFolder', () => {
 	async function setupFolderWithNotes() {
 		// Create folder + 2 notes
 		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } })) // createFolder
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } })) // createFolder (index.md)
 			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n1' } })) // note 1
 			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n2' } })); // note 2
 
@@ -108,7 +108,7 @@ describe('renameFolder', () => {
 	it('renames all note paths in store immediately', async () => {
 		await setupFolderWithNotes();
 
-		// Mock API calls for each file: create new + delete old (3 files: .gitkeep + 2 notes)
+		// Mock API calls for each file: create new + delete old (3 files: index.md + 2 notes)
 		for (let i = 0; i < 3; i++) {
 			mockFetch
 				.mockResolvedValueOnce(githubResponse({ content: { sha: `new-sha-${i}` } })) // create new
@@ -166,7 +166,7 @@ describe('renameFolder', () => {
 		const queue = await testCache.getSyncQueue();
 		const creates = queue.filter((q) => q.action === 'create' && q.path.startsWith('archive/'));
 		const deletes = queue.filter((q) => q.action === 'delete' && q.path.startsWith('work/'));
-		// Only note files queue deletes (.gitkeep with no sha skips delete)
+		// Only note files queue deletes (index.md with no sha skips delete)
 		expect(creates.length).toBeGreaterThan(0);
 		expect(deletes.length).toBeGreaterThan(0);
 	});
@@ -204,7 +204,7 @@ describe('deleteFolder', () => {
 		await setupFolderWithNotes();
 
 		mockFetch
-			.mockResolvedValueOnce(githubResponse({})) // delete .gitkeep
+			.mockResolvedValueOnce(githubResponse({})) // delete index.md
 			.mockResolvedValueOnce(githubResponse({})) // delete note 1
 			.mockResolvedValueOnce(githubResponse({})); // delete note 2
 
@@ -237,15 +237,15 @@ describe('deleteFolder', () => {
 
 		const queue = await testCache.getSyncQueue();
 		const deletes = queue.filter((q) => q.action === 'delete' && q.path.startsWith('old-folder/'));
-		expect(deletes.length).toBe(3); // .gitkeep + 2 notes
+		expect(deletes.length).toBe(3); // index.md + 2 notes
 	});
 
-	it('handles deleting an empty folder (only .gitkeep)', async () => {
+	it('handles deleting an empty folder (only index.md)', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }));
 		await store.createFolder('empty-folder');
 		mockFetch.mockReset();
 
-		mockFetch.mockResolvedValueOnce(githubResponse({})); // delete .gitkeep
+		mockFetch.mockResolvedValueOnce(githubResponse({})); // delete index.md
 
 		await store.deleteFolder('empty-folder');
 

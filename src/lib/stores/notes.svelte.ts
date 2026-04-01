@@ -216,11 +216,11 @@ export function getFolderTree(): Folder[] {
 }
 
 export async function createFolder(name: string): Promise<void> {
-	const path = `${name}/.gitkeep`;
+	const path = `${name}/index.md`;
 	const now = new Date().toISOString();
 	const note: Note = {
 		path,
-		title: '.gitkeep',
+		title: 'index.md',
 		content: '',
 		type: 'text',
 		pinned: false,
