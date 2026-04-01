@@ -87,8 +87,8 @@
 					title="Rename"
 				>
 					<svg
-						width="14"
-						height="14"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -106,8 +106,8 @@
 						title="Add sub-folder"
 					>
 						<svg
-							width="14"
-							height="14"
+							width="16"
+							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -128,8 +128,8 @@
 					title="Delete"
 				>
 					<svg
-						width="14"
-						height="14"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -150,8 +150,8 @@
 		<div class="subfolder-add-row">
 			<span class="subfolder-icon">
 				<svg
-					width="12"
-					height="12"
+					width="16"
+					height="16"
 					viewBox="0 0 24 24"
 					fill="none"
 					stroke="currentColor"
@@ -217,7 +217,7 @@
 		display: flex;
 		align-items: center;
 		justify-content: space-between;
-		padding: 20px 24px 12px;
+		padding: 2px 2px 2px 5px;
 		border-bottom: 1px solid var(--border);
 		gap: 12px;
 	}
@@ -272,12 +272,32 @@
 	}
 
 	.icon-btn {
-		width: 28px;
-		height: 28px;
+		width: 32px;
+		height: 32px;
 		padding: 0;
 		display: flex;
 		align-items: center;
 		justify-content: center;
+		border: none;
+		background: transparent;
+		transition:
+			background 0.1s,
+			color 0.1s;
+	}
+
+	.icon-btn:hover {
+		background: var(--bg-surface);
+		color: var(--text-primary);
+		border: none;
+	}
+
+	.icon-btn.danger {
+		border: none;
+	}
+
+	.icon-btn.danger:hover {
+		background: var(--bg-surface);
+		color: var(--danger);
 	}
 
 	.subfolder-add-row {

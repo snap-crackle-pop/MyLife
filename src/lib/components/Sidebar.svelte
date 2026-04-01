@@ -52,7 +52,6 @@
 
 <nav class="sidebar" class:open={isOpen}>
 	<div class="sidebar-header">
-		<span class="sidebar-title">Folders</span>
 		<button class="close-btn" onclick={() => onclose?.()} aria-label="Close folders">
 			<svg
 				width="18"
@@ -79,8 +78,8 @@
 				>
 					<span class="folder-icon">
 						<svg
-							width="14"
-							height="14"
+							width="16"
+							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -104,8 +103,8 @@
 					>
 						<span class="folder-icon">
 							<svg
-								width="12"
-								height="12"
+								width="16"
+								height="16"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
@@ -126,8 +125,8 @@
 			<li class="folder-add-row">
 				<span class="folder-icon">
 					<svg
-						width="14"
-						height="14"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -151,8 +150,8 @@
 	<div class="sidebar-actions">
 		<button class="action-btn" onclick={startAdding} aria-label="New folder" title="New folder">
 			<svg
-				width="15"
-				height="15"
+				width="16"
+				height="16"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
@@ -173,8 +172,8 @@
 			title="Trash"
 		>
 			<svg
-				width="15"
-				height="15"
+				width="16"
+				height="16"
 				viewBox="0 0 24 24"
 				fill="none"
 				stroke="currentColor"
@@ -200,7 +199,7 @@
 		border-right: 1px solid var(--border);
 		display: flex;
 		flex-direction: column;
-		padding: 16px 0 0;
+		padding: 5px 0 0;
 	}
 
 	.folder-list {
@@ -214,7 +213,7 @@
 		align-items: center;
 		gap: 8px;
 		width: 100%;
-		padding: 6px 16px;
+		padding: 8px 16px;
 		font-size: 13px;
 		color: var(--text-secondary);
 		border-radius: 0;
@@ -242,7 +241,7 @@
 		display: flex;
 		align-items: center;
 		gap: 8px;
-		padding: 4px 16px;
+		padding: 8px 16px;
 	}
 
 	.folder-name-input {
@@ -263,7 +262,7 @@
 	.sidebar-actions {
 		display: flex;
 		border-top: 1px solid var(--border);
-		padding: 8px;
+		padding: 0px;
 		gap: 4px;
 	}
 
@@ -293,18 +292,7 @@
 	}
 
 	.sidebar-header {
-		display: flex;
-		align-items: center;
-		justify-content: space-between;
-		padding: 0 8px 10px 16px;
-	}
-
-	.sidebar-title {
-		font-size: 11px;
-		font-weight: 600;
-		text-transform: uppercase;
-		letter-spacing: 0.6px;
-		color: var(--text-muted);
+		display: none;
 	}
 
 	.close-btn {
@@ -336,6 +324,13 @@
 
 		.sidebar.open {
 			transform: translateX(0);
+		}
+
+		.sidebar-header {
+			display: flex;
+			align-items: center;
+			justify-content: flex-end;
+			padding: 0 8px 10px 16px;
 		}
 
 		.close-btn {

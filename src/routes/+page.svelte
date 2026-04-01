@@ -169,24 +169,24 @@
 					aria-label="Confirm rename"
 				>
 					<svg
-						width="18"
-						height="18"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
-						stroke-width="2.5"
+						stroke-width="2"
 					>
 						<polyline points="20 6 9 17 4 12" />
 					</svg>
 				</button>
 				<button class="header-icon-btn" onclick={cancelRename} aria-label="Cancel rename">
 					<svg
-						width="18"
-						height="18"
+						width="16"
+						height="16"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
-						stroke-width="2.5"
+						stroke-width="2"
 					>
 						<line x1="18" y1="6" x2="6" y2="18" />
 						<line x1="6" y1="6" x2="18" y2="18" />
@@ -197,8 +197,8 @@
 				{#if !confirming && !addingSubfolder}
 					<button class="header-icon-btn" onclick={startRename} aria-label="Rename">
 						<svg
-							width="17"
-							height="17"
+							width="16"
+							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
@@ -211,8 +211,8 @@
 					{#if selectedIsTopLevel}
 						<button class="header-icon-btn" onclick={startAddSubfolder} aria-label="Add sub-folder">
 							<svg
-								width="17"
-								height="17"
+								width="16"
+								height="16"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
@@ -228,8 +228,8 @@
 					{/if}
 					<button class="header-icon-btn danger" onclick={startDelete} aria-label="Delete">
 						<svg
-							width="17"
-							height="17"
+							width="16"
+							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
 							stroke="currentColor"
