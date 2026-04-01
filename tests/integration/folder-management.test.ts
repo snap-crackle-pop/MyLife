@@ -304,15 +304,15 @@ describe('FolderPanel', () => {
 
 	// GitHub API tests for createFolder, renameFolder, deleteFolder
 	describe('createFolder via GitHubClient', () => {
-		it('creates a .gitkeep placeholder file in the new folder', async () => {
+		it('creates an index.md file in the new folder', async () => {
 			const { GitHubClient } = await import('$lib/github');
 			const client = new GitHubClient('token', 'user/repo');
 			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'abc' } }));
 
-			await client.createFile('projects/.gitkeep', '');
+			await client.createFile('projects/index.md', '');
 
 			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/contents/projects/.gitkeep'),
+				expect.stringContaining('/contents/projects/index.md'),
 				expect.objectContaining({ method: 'PUT' })
 			);
 		});

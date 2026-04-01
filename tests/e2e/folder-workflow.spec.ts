@@ -112,8 +112,8 @@ test.describe('Folder sidebar', () => {
 
 	test('folders from GitHub appear in the sidebar', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'inbox/.gitkeep', content: '', sha: 'gk-1' },
-			{ path: 'work/.gitkeep', content: '', sha: 'gk-2' }
+			{ path: 'inbox/index.md', content: '', sha: 'gk-1' },
+			{ path: 'work/index.md', content: '', sha: 'gk-2' }
 		]);
 
 		await expect(page.locator('[data-folder]').filter({ hasText: 'inbox' })).toBeVisible();
@@ -122,9 +122,9 @@ test.describe('Folder sidebar', () => {
 
 	test('folders are sorted alphabetically', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'zebra/.gitkeep', content: '', sha: 'gk-z' },
-			{ path: 'alpha/.gitkeep', content: '', sha: 'gk-a' },
-			{ path: 'mango/.gitkeep', content: '', sha: 'gk-m' }
+			{ path: 'zebra/index.md', content: '', sha: 'gk-z' },
+			{ path: 'alpha/index.md', content: '', sha: 'gk-a' },
+			{ path: 'mango/index.md', content: '', sha: 'gk-m' }
 		]);
 
 		const items = page.locator('[data-folder]');
@@ -162,45 +162,31 @@ test.describe('Create folder', () => {
 
 test.describe('Folder panel', () => {
 	test('selecting a folder shows its panel with name', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'gk' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'inbox' }).click();
 
 		await expect(page.getByRole('heading', { name: 'inbox' })).toBeVisible();
 	});
 
-	test('folder panel shows the correct note count', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'work/.gitkeep', content: '', sha: 'gk' },
-			{ path: 'work/task-one.md', content: 'Task one', sha: 'sha-1' },
-			{ path: 'work/task-two.md', content: 'Task two', sha: 'sha-2' }
-		]);
-
-		await page.locator('[data-folder]').filter({ hasText: 'work' }).click();
-		await expect(page.getByText(/2 notes/i)).toBeVisible();
-	});
-
-	test('empty folder shows "no notes" message', async ({ page }) => {
-		await setupApp(page, [{ path: 'empty/.gitkeep', content: '', sha: 'gk' }]);
+	test('empty folder shows textarea with placeholder', async ({ page }) => {
+		await setupApp(page, [{ path: 'empty/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'empty' }).click();
-		await expect(page.getByText(/no notes/i)).toBeVisible();
+		await expect(page.locator('.note-editor')).toBeVisible();
 	});
 
-	test('note titles are listed inside the folder panel', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'ideas/.gitkeep', content: '', sha: 'gk' },
-			{ path: 'ideas/first-idea.md', content: '# First Idea\nDetails here', sha: 'sha-1' }
-		]);
+	test('folder panel shows index.md content in textarea', async ({ page }) => {
+		await setupApp(page, [{ path: 'ideas/index.md', content: 'My first idea', sha: 'sha-1' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'ideas' }).click();
-		await expect(page.getByText('First Idea')).toBeVisible();
+		await expect(page.locator('.note-editor')).toHaveValue('My first idea');
 	});
 });
 
 test.describe('Rename folder', () => {
 	test('renaming updates sidebar and panel heading', async ({ page }) => {
-		await setupApp(page, [{ path: 'old-name/.gitkeep', content: '', sha: 'gk' }]);
+		await setupApp(page, [{ path: 'old-name/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'old-name' }).click();
 		await page.getByRole('button', { name: /rename/i }).click();
@@ -217,7 +203,7 @@ test.describe('Rename folder', () => {
 
 test.describe('Delete folder', () => {
 	test('deleting empty folder removes it from sidebar and shows empty state', async ({ page }) => {
-		await setupApp(page, [{ path: 'temp/.gitkeep', content: '', sha: 'gk' }]);
+		await setupApp(page, [{ path: 'temp/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'temp' }).click();
 		await page.getByRole('button', { name: 'Delete', exact: true }).click();
@@ -227,25 +213,19 @@ test.describe('Delete folder', () => {
 		await expect(page.getByText(/select a folder or create one/i)).toBeVisible();
 	});
 
-	test('deleting folder with notes shows trash warning with count', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'to-delete/.gitkeep', content: '', sha: 'gk' },
-			{ path: 'to-delete/note-a.md', content: 'Note A', sha: 'sha-a' },
-			{ path: 'to-delete/note-b.md', content: 'Note B', sha: 'sha-b' }
-		]);
+	test('deleting folder shows confirmation dialog', async ({ page }) => {
+		await setupApp(page, [{ path: 'to-delete/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'to-delete' }).click();
-		// Use exact match: the folder button text is "to-delete" which also matches /delete/i
 		await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
-		// Svelte renders {count} and the rest as separate text nodes; match loosely
-		await expect(page.getByText(/will be permanently deleted/i)).toBeVisible();
-		await expect(page.locator('.confirm-msg')).toContainText('2');
+		await expect(page.locator('.confirm-msg')).toContainText('to-delete');
+		await expect(page.getByRole('button', { name: /confirm/i })).toBeVisible();
 	});
 
 	test('confirming delete removes folder and shows empty state', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'bye/.gitkeep', content: '', sha: 'gk' },
+			{ path: 'bye/index.md', content: '', sha: 'gk' },
 			{ path: 'bye/note.md', content: 'Farewell note', sha: 'sha-n' }
 		]);
 
@@ -258,7 +238,7 @@ test.describe('Delete folder', () => {
 	});
 
 	test('cancelling delete leaves folder intact', async ({ page }) => {
-		await setupApp(page, [{ path: 'keep-me/.gitkeep', content: '', sha: 'gk' }]);
+		await setupApp(page, [{ path: 'keep-me/index.md', content: '', sha: 'gk' }]);
 
 		await page.locator('[data-folder]').filter({ hasText: 'keep-me' }).click();
 		await page.getByRole('button', { name: 'Delete', exact: true }).click();
@@ -271,7 +251,7 @@ test.describe('Delete folder', () => {
 
 test.describe('Persistence', () => {
 	test('folders persist across page reload (loaded from cache)', async ({ page }) => {
-		await setupApp(page, [{ path: 'saved/.gitkeep', content: '', sha: 'gk' }]);
+		await setupApp(page, [{ path: 'saved/index.md', content: '', sha: 'gk' }]);
 
 		// Verify folder is shown
 		await expect(page.locator('[data-folder]').filter({ hasText: 'saved' })).toBeVisible();

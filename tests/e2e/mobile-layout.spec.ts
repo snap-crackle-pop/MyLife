@@ -78,7 +78,7 @@ test.describe('mobile layout', () => {
 	test.use({ viewport: { width: 375, height: 812 } });
 
 	test('sidebar is hidden and hamburger is visible on load', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha1' }]);
 
 		const nav = page.getByRole('navigation');
 		const hamburger = page.getByRole('button', { name: 'Open folders' });
@@ -92,7 +92,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('hamburger opens the sidebar drawer', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 
@@ -102,7 +102,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('close button inside drawer closes the sidebar', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await expect(page.getByRole('navigation')).toBeInViewport();
@@ -112,7 +112,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('selecting a folder closes the drawer', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'inbox' }).click();
@@ -123,7 +123,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('backdrop tap closes the drawer', async ({ page }) => {
-		await setupApp(page, [{ path: 'inbox/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await expect(page.getByRole('navigation')).toBeInViewport();
@@ -134,7 +134,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('mobile header shows folder name when folder is selected', async ({ page }) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
@@ -148,7 +148,7 @@ test.describe('mobile layout', () => {
 	test('mobile header shows rename and delete icon buttons when folder is selected', async ({
 		page
 	}) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
@@ -158,7 +158,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('tapping rename icon shows inline input in mobile header', async ({ page }) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
@@ -176,7 +176,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('confirming rename updates the folder name in mobile header', async ({ page }) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
@@ -192,7 +192,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('tapping delete icon shows confirm bar', async ({ page }) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();
@@ -209,7 +209,7 @@ test.describe('mobile layout', () => {
 	});
 
 	test('cancelling delete restores rename and delete buttons in header', async ({ page }) => {
-		await setupApp(page, [{ path: 'journal/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'journal/index.md', content: '', sha: 'sha1' }]);
 
 		await page.getByRole('button', { name: 'Open folders' }).click();
 		await page.locator('[data-folder]').filter({ hasText: 'journal' }).click();

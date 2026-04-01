@@ -62,8 +62,8 @@ async function setupApp(page: Page, files: { path: string; content: string; sha:
 test.describe('sub-folder support', () => {
 	test('sub-folders appear indented under their parent in the sidebar', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'work/.gitkeep', content: '', sha: 'sha1' },
-			{ path: 'work/projects/.gitkeep', content: '', sha: 'sha2' }
+			{ path: 'work/index.md', content: '', sha: 'sha1' },
+			{ path: 'work/projects/index.md', content: '', sha: 'sha2' }
 		]);
 
 		await expect(page.locator('[data-folder="work"]')).toBeVisible();
@@ -72,8 +72,8 @@ test.describe('sub-folder support', () => {
 
 	test('clicking a sub-folder in the sidebar shows its folder panel', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'work/.gitkeep', content: '', sha: 'sha1' },
-			{ path: 'work/projects/.gitkeep', content: '', sha: 'sha2' }
+			{ path: 'work/index.md', content: '', sha: 'sha1' },
+			{ path: 'work/projects/index.md', content: '', sha: 'sha2' }
 		]);
 
 		await page.locator('[data-folder="work/projects"]').click();
@@ -83,8 +83,8 @@ test.describe('sub-folder support', () => {
 
 	test('sub-folder panel does not show add sub-folder button', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'work/.gitkeep', content: '', sha: 'sha1' },
-			{ path: 'work/projects/.gitkeep', content: '', sha: 'sha2' }
+			{ path: 'work/index.md', content: '', sha: 'sha1' },
+			{ path: 'work/projects/index.md', content: '', sha: 'sha2' }
 		]);
 
 		await page.locator('[data-folder="work/projects"]').click();
@@ -93,7 +93,7 @@ test.describe('sub-folder support', () => {
 	});
 
 	test('top-level folder panel shows add sub-folder button', async ({ page }) => {
-		await setupApp(page, [{ path: 'work/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'work/index.md', content: '', sha: 'sha1' }]);
 
 		await page.locator('[data-folder="work"]').click();
 
@@ -101,7 +101,7 @@ test.describe('sub-folder support', () => {
 	});
 
 	test('creating a sub-folder from the panel adds it to the sidebar', async ({ page }) => {
-		await setupApp(page, [{ path: 'work/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'work/index.md', content: '', sha: 'sha1' }]);
 
 		await page.locator('[data-folder="work"]').click();
 		await page.getByRole('button', { name: 'Add sub-folder' }).click();
@@ -115,7 +115,7 @@ test.describe('sub-folder support', () => {
 	});
 
 	test('after creating a sub-folder, its panel is selected', async ({ page }) => {
-		await setupApp(page, [{ path: 'work/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'work/index.md', content: '', sha: 'sha1' }]);
 
 		await page.locator('[data-folder="work"]').click();
 		await page.getByRole('button', { name: 'Add sub-folder' }).click();
@@ -127,7 +127,7 @@ test.describe('sub-folder support', () => {
 	});
 
 	test('cancelling sub-folder input with Escape does not create a folder', async ({ page }) => {
-		await setupApp(page, [{ path: 'work/.gitkeep', content: '', sha: 'sha1' }]);
+		await setupApp(page, [{ path: 'work/index.md', content: '', sha: 'sha1' }]);
 
 		await page.locator('[data-folder="work"]').click();
 		await page.getByRole('button', { name: 'Add sub-folder' }).click();
@@ -141,8 +141,8 @@ test.describe('sub-folder support', () => {
 
 	test('renaming a sub-folder keeps it under the same parent', async ({ page }) => {
 		await setupApp(page, [
-			{ path: 'work/.gitkeep', content: '', sha: 'sha1' },
-			{ path: 'work/projects/.gitkeep', content: '', sha: 'sha2' }
+			{ path: 'work/index.md', content: '', sha: 'sha1' },
+			{ path: 'work/projects/index.md', content: '', sha: 'sha2' }
 		]);
 
 		await page.locator('[data-folder="work/projects"]').click();

@@ -4,6 +4,7 @@
 	import {
 		getFolderTree,
 		getFolderNote,
+		updateNote,
 		createFolder,
 		renameFolder,
 		deleteFolder
@@ -113,6 +114,12 @@
 	function handleSelectFolder(path: string) {
 		setSelectedFolder(path);
 		setSidebarOpen(false);
+	}
+
+	async function handleSave(content: string) {
+		const note = getFolderNote(selectedFolder!);
+		if (!note) return;
+		await updateNote(note.path, content);
 	}
 
 	const folderDisplayName = $derived(selectedFolder?.split('/').pop() ?? '');
@@ -268,6 +275,7 @@
 				onsubfolderinput={(v) => (subfolderName = v)}
 				onconfirmsubfolder={confirmAddSubfolder}
 				oncancelsubfolder={cancelAddSubfolder}
+				onsave={handleSave}
 			/>
 		{:else}
 			<div class="empty-state">

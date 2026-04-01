@@ -72,6 +72,9 @@
 			clearTimeout(saveTimer);
 			saveTimer = null;
 		}
+		return () => {
+			if (saveTimer) clearTimeout(saveTimer);
+		};
 	});
 
 	function handleInput(e: Event) {
