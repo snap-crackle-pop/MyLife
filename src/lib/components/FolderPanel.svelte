@@ -177,7 +177,7 @@
 			{#if realNotes.length > 0}
 				<span class="confirm-msg">
 					{realNotes.length}
-					{realNotes.length === 1 ? 'note' : 'notes'} will be moved to trash. Delete
+					{realNotes.length === 1 ? 'note' : 'notes'} will be permanently deleted. Delete
 					<strong>{folderDisplayName}</strong>?
 				</span>
 			{:else}

@@ -225,7 +225,7 @@ describe('FolderPanel', () => {
 			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: true }
 		});
 
-		expect(screen.getByText(/2 notes will be moved to trash/i)).toBeInTheDocument();
+		expect(screen.getByText(/2 notes will be permanently deleted/i)).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /cancel/i })).toBeInTheDocument();
 	});
@@ -283,7 +283,7 @@ describe('FolderPanel', () => {
 			props: { folder: 'empty', notes: [], renaming: false, renameName: '', confirming: true }
 		});
 
-		expect(screen.queryByText(/will be moved to trash/i)).not.toBeInTheDocument();
+		expect(screen.queryByText(/will be permanently deleted/i)).not.toBeInTheDocument();
 		expect(screen.getByRole('button', { name: /confirm/i })).toBeInTheDocument();
 	});
 

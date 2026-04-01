@@ -163,30 +163,6 @@
 			</svg>
 			New folder
 		</button>
-
-		<button
-			class="action-btn trash-btn"
-			class:active={selectedFolder === '.trash'}
-			onclick={() => onselectfolder?.('.trash')}
-			aria-label="Trash"
-			title="Trash"
-		>
-			<svg
-				width="16"
-				height="16"
-				viewBox="0 0 24 24"
-				fill="none"
-				stroke="currentColor"
-				stroke-width="2"
-			>
-				<polyline points="3 6 5 6 21 6" />
-				<path d="M19 6l-1 14H6L5 6" />
-				<path d="M10 11v6" />
-				<path d="M14 11v6" />
-				<path d="M9 6V4h6v2" />
-			</svg>
-			Trash
-		</button>
 	</div>
 </nav>
 
@@ -284,11 +260,6 @@
 	.action-btn:hover {
 		background: var(--bg-surface);
 		color: var(--text-primary);
-	}
-
-	.trash-btn.active {
-		color: var(--accent);
-		background: var(--bg-surface);
 	}
 
 	.sidebar-header {
