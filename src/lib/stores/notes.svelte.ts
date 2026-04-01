@@ -211,6 +211,10 @@ export function getPinnedNotes(): Note[] {
 	return notes.filter((n) => n.pinned);
 }
 
+export function getFolderNote(folder: string): Note | null {
+	return notes.find((n) => n.path === `${folder}/index.md`) ?? null;
+}
+
 export function getFolderTree(): Folder[] {
 	return buildFolderTree(notes.map((n) => n.path));
 }

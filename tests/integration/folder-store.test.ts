@@ -266,3 +266,34 @@ describe('deleteFolder', () => {
 		).toBe(3);
 	});
 });
+
+// ── getFolderNote ─────────────────────────────────────────────────────────────
+
+describe('getFolderNote', () => {
+	it('returns the index.md note for a folder that exists', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } }));
+		await store.createFolder('journal');
+
+		const note = store.getFolderNote('journal');
+
+		expect(note).not.toBeNull();
+		expect(note?.path).toBe('journal/index.md');
+	});
+
+	it('returns null for a folder that has not been created', () => {
+		expect(store.getFolderNote('nonexistent')).toBeNull();
+	});
+
+	it('returns the note after renaming the folder', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } })); // createFolder
+		await store.createFolder('old');
+		mockFetch
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } })) // create new path
+			.mockResolvedValueOnce(githubResponse({})); // delete old path
+
+		await store.renameFolder('old', 'new');
+
+		expect(store.getFolderNote('old')).toBeNull();
+		expect(store.getFolderNote('new')?.path).toBe('new/index.md');
+	});
+});
