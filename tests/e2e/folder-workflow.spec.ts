@@ -239,7 +239,7 @@ test.describe('Delete folder', () => {
 		await page.getByRole('button', { name: 'Delete', exact: true }).click();
 
 		// Svelte renders {count} and the rest as separate text nodes; match loosely
-		await expect(page.getByText(/will be moved to trash/i)).toBeVisible();
+		await expect(page.getByText(/will be permanently deleted/i)).toBeVisible();
 		await expect(page.locator('.confirm-msg')).toContainText('2');
 	});
 

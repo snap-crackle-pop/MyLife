@@ -123,7 +123,7 @@ The sync queue is drained by `pushOfflineQueue()` on the next online sync.
 - GitHub PAT stored in browser IndexedDB (single-user app)
 - Notes are plain markdown files in a private GitHub repo
 - Offline-first: read from IndexedDB, sync to GitHub when online
-- Soft delete: moves files to `.trash/` folder in repo
+- Delete: permanently removes files via GitHub API
 
 ## Do NOT
 - Use `localStorage` for the GitHub PAT — use IndexedDB via `NoteCache`
