@@ -171,6 +171,8 @@ describe('deleteNote', () => {
 		const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
 		expect(url).toContain('inbox');
 		expect((opts.method as string).toUpperCase()).toBe('DELETE');
+		const body = JSON.parse(opts.body as string);
+		expect(body.sha).toBe('sha-del');
 	});
 
 	it('queues delete op when API fails', async () => {
