@@ -20,10 +20,12 @@
 	let folderNotes = $derived(selectedFolder ? getNotesInFolder(selectedFolder) : []);
 	let sidebarOpen = $derived(getSidebarOpen());
 
-	// Rename / confirm state owned here so the mobile header can drive it
+	// Rename / confirm / sub-folder state owned here so both desktop and mobile header can drive it
 	let renaming = $state(false);
 	let renameName = $state('');
 	let confirming = $state(false);
+	let addingSubfolder = $state(false);
+	let subfolderName = $state('');
 
 	// Reset interaction state whenever the active folder changes
 	let prevFolder: string | null = null;
@@ -31,6 +33,7 @@
 		if (selectedFolder !== prevFolder) {
 			renaming = false;
 			confirming = false;
+			addingSubfolder = false;
 			prevFolder = selectedFolder;
 		}
 	});
@@ -39,6 +42,7 @@
 		renameName = selectedFolder?.split('/').pop() ?? '';
 		renaming = true;
 		confirming = false;
+		addingSubfolder = false;
 	}
 
 	function confirmRename() {
@@ -54,6 +58,7 @@
 	function startDelete() {
 		confirming = true;
 		renaming = false;
+		addingSubfolder = false;
 	}
 
 	function cancelDelete() {
@@ -65,6 +70,27 @@
 		if (selectedFolder) await handleDelete(selectedFolder);
 	}
 
+	function startAddSubfolder() {
+		addingSubfolder = true;
+		subfolderName = '';
+		renaming = false;
+		confirming = false;
+	}
+
+	function cancelAddSubfolder() {
+		addingSubfolder = false;
+	}
+
+	async function confirmAddSubfolder() {
+		const name = subfolderName.trim();
+		addingSubfolder = false;
+		if (name && selectedFolder) {
+			const path = `${selectedFolder}/${name}`;
+			await createFolder(path);
+			setSelectedFolder(path);
+		}
+	}
+
 	async function handleCreateFolder(name: string) {
 		await createFolder(name);
 		setSelectedFolder(name);
@@ -73,8 +99,10 @@
 
 	async function handleRename(newName: string) {
 		if (!selectedFolder) return;
-		await renameFolder(selectedFolder, newName);
-		setSelectedFolder(newName);
+		const parts = selectedFolder.split('/');
+		const fullNewPath = parts.length > 1 ? `${parts.slice(0, -1).join('/')}/${newName}` : newName;
+		await renameFolder(selectedFolder, fullNewPath);
+		setSelectedFolder(fullNewPath);
 	}
 
 	async function handleDelete(folder: string) {
@@ -88,6 +116,7 @@
 	}
 
 	const folderDisplayName = $derived(selectedFolder?.split('/').pop() ?? '');
+	const selectedIsTopLevel = $derived(!!selectedFolder && !selectedFolder.includes('/'));
 </script>
 
 <div class="app">
@@ -165,7 +194,7 @@
 				</button>
 			{:else if selectedFolder}
 				<span class="app-title" role="heading" aria-level="2">{folderDisplayName}</span>
-				{#if !confirming}
+				{#if !confirming && !addingSubfolder}
 					<button class="header-icon-btn" onclick={startRename} aria-label="Rename">
 						<svg
 							width="17"
@@ -179,6 +208,24 @@
 							<path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
 						</svg>
 					</button>
+					{#if selectedIsTopLevel}
+						<button class="header-icon-btn" onclick={startAddSubfolder} aria-label="Add sub-folder">
+							<svg
+								width="17"
+								height="17"
+								viewBox="0 0 24 24"
+								fill="none"
+								stroke="currentColor"
+								stroke-width="2"
+							>
+								<path
+									d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+								/>
+								<line x1="12" y1="11" x2="12" y2="17" />
+								<line x1="9" y1="14" x2="15" y2="14" />
+							</svg>
+						</button>
+					{/if}
 					<button class="header-icon-btn danger" onclick={startDelete} aria-label="Delete">
 						<svg
 							width="17"
@@ -208,13 +255,19 @@
 				{renaming}
 				{renameName}
 				{confirming}
+				{addingSubfolder}
+				{subfolderName}
 				onstartrename={startRename}
 				onstartdelete={startDelete}
+				onstartaddsubfolder={startAddSubfolder}
 				onrenameinput={(v) => (renameName = v)}
 				onconfirmrename={confirmRename}
 				oncancelrename={cancelRename}
 				onconfirmdelete={confirmDelete}
 				oncanceldelete={cancelDelete}
+				onsubfolderinput={(v) => (subfolderName = v)}
+				onconfirmsubfolder={confirmAddSubfolder}
+				oncancelsubfolder={cancelAddSubfolder}
 			/>
 		{:else}
 			<div class="empty-state">
