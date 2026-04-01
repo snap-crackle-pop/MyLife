@@ -79,3 +79,173 @@ describe('Sidebar with sub-folders', () => {
 		expect(screen.queryByText('active')).not.toBeInTheDocument();
 	});
 });
+
+// ── FolderPanel sub-folder UI ─────────────────────────────────────────────────
+
+describe('FolderPanel sub-folder actions', () => {
+	const notes = [
+		{
+			path: 'work/a.md',
+			title: 'A',
+			content: '',
+			type: 'text' as const,
+			pinned: false,
+			updatedAt: '',
+			sha: ''
+		}
+	];
+
+	it('shows icon buttons for rename and delete (aria-labels)', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+		});
+
+		expect(screen.getByRole('button', { name: 'Rename' })).toBeInTheDocument();
+		expect(screen.getByRole('button', { name: 'Delete' })).toBeInTheDocument();
+	});
+
+	it('shows add sub-folder button for a top-level folder', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: { folder: 'work', notes, renaming: false, renameName: '', confirming: false }
+		});
+
+		expect(screen.getByRole('button', { name: 'Add sub-folder' })).toBeInTheDocument();
+	});
+
+	it('does not show add sub-folder button for a sub-folder', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: {
+				folder: 'work/projects',
+				notes: [],
+				renaming: false,
+				renameName: '',
+				confirming: false
+			}
+		});
+
+		expect(screen.queryByRole('button', { name: 'Add sub-folder' })).not.toBeInTheDocument();
+	});
+
+	it('calls onstartaddsubfolder when add sub-folder button is clicked', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onstartaddsubfolder = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				onstartaddsubfolder
+			}
+		});
+
+		await fireEvent.click(screen.getByRole('button', { name: 'Add sub-folder' }));
+
+		expect(onstartaddsubfolder).toHaveBeenCalledOnce();
+	});
+
+	it('shows inline sub-folder input when addingSubfolder is true', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				addingSubfolder: true,
+				subfolderName: ''
+			}
+		});
+
+		expect(screen.getByPlaceholderText('sub-folder name')).toBeInTheDocument();
+	});
+
+	it('hides action buttons when addingSubfolder is true', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				addingSubfolder: true,
+				subfolderName: ''
+			}
+		});
+
+		expect(screen.queryByRole('button', { name: 'Rename' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Add sub-folder' })).not.toBeInTheDocument();
+		expect(screen.queryByRole('button', { name: 'Delete' })).not.toBeInTheDocument();
+	});
+
+	it('calls onconfirmsubfolder when Enter is pressed in sub-folder input', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onconfirmsubfolder = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				addingSubfolder: true,
+				subfolderName: 'projects',
+				onconfirmsubfolder
+			}
+		});
+
+		await fireEvent.keyDown(screen.getByPlaceholderText('sub-folder name'), { key: 'Enter' });
+
+		expect(onconfirmsubfolder).toHaveBeenCalledOnce();
+	});
+
+	it('calls oncancelsubfolder when Escape is pressed in sub-folder input', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const oncancelsubfolder = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				addingSubfolder: true,
+				subfolderName: '',
+				oncancelsubfolder
+			}
+		});
+
+		await fireEvent.keyDown(screen.getByPlaceholderText('sub-folder name'), { key: 'Escape' });
+
+		expect(oncancelsubfolder).toHaveBeenCalledOnce();
+	});
+
+	it('calls onsubfolderinput when typing in the sub-folder input', async () => {
+		const { default: FolderPanel } = await import('$lib/components/FolderPanel.svelte');
+		const onsubfolderinput = vi.fn();
+		render(FolderPanel, {
+			props: {
+				folder: 'work',
+				notes,
+				renaming: false,
+				renameName: '',
+				confirming: false,
+				addingSubfolder: true,
+				subfolderName: '',
+				onsubfolderinput
+			}
+		});
+
+		await fireEvent.input(screen.getByPlaceholderText('sub-folder name'), {
+			target: { value: 'archive' }
+		});
+
+		expect(onsubfolderinput).toHaveBeenCalledWith('archive');
+	});
+});
