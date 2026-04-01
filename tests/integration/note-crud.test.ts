@@ -146,49 +146,46 @@ describe('updateNote', () => {
 // ── deleteNote ────────────────────────────────────────────────────────────────
 
 describe('deleteNote', () => {
-	it('removes original path and adds .trash/ path immediately', async () => {
+	it('removes note from store and cache immediately', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'To Delete', 'text');
-
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-sha' } })) // create in trash
-			.mockResolvedValueOnce(githubResponse({})); // delete original
+		mockFetch.mockReset();
+		mockFetch.mockResolvedValueOnce(githubResponse({}));
 
 		await store.deleteNote(note.path);
 
 		const notes = store.getNotes();
 		expect(notes.some((n) => n.path === note.path)).toBe(false);
-		expect(notes.some((n) => n.path.startsWith('.trash/'))).toBe(true);
+		expect(notes.some((n) => n.path.startsWith('.trash/'))).toBe(false);
 	});
 
-	it('patches trash SHA after API succeeds', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		const note = await store.createNote('inbox', 'Trash SHA Test', 'text');
-
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-trash-sha' } }))
-			.mockResolvedValueOnce(githubResponse({}));
+	it('calls deleteFile with the correct path and sha', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-del' } }));
+		const note = await store.createNote('inbox', 'Del SHA Test', 'text');
+		mockFetch.mockReset();
+		mockFetch.mockResolvedValueOnce(githubResponse({}));
 
 		await store.deleteNote(note.path);
 
-		const trashed = store.getNotes().find((n) => n.path.startsWith('.trash/'));
-		expect(trashed?.sha).toBe('new-trash-sha');
+		expect(mockFetch).toHaveBeenCalledOnce();
+		const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
+		expect(url).toContain('inbox');
+		expect((opts.method as string).toUpperCase()).toBe('DELETE');
 	});
 
-	it('queues create-trash and delete-original ops when API fails', async () => {
+	it('queues delete op when API fails', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		const note = await store.createNote('inbox', 'Fail Trash', 'text');
+		const note = await store.createNote('inbox', 'Fail Delete', 'text');
 
 		mockFetch.mockRejectedValueOnce(new Error('network error'));
 
 		await store.deleteNote(note.path);
 
 		const queue = await testCache.getSyncQueue();
-		expect(queue.some((q) => q.action === 'create' && q.path.startsWith('.trash/'))).toBe(true);
 		expect(queue.some((q) => q.action === 'delete' && q.path === note.path)).toBe(true);
 	});
 
-	it('queues ops and skips API when offline', async () => {
+	it('queues delete op and skips API when offline', async () => {
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Offline Delete', 'text');
 		mockFetch.mockReset();
@@ -197,11 +194,9 @@ describe('deleteNote', () => {
 
 		await store.deleteNote(note.path);
 
-		// No new API calls
 		expect(mockFetch).not.toHaveBeenCalled();
-
 		const queue = await testCache.getSyncQueue();
-		expect(queue.some((q) => q.action === 'create' && q.path.startsWith('.trash/'))).toBe(true);
+		expect(queue.some((q) => q.action === 'delete' && q.path === note.path)).toBe(true);
 	});
 
 	it('does nothing when note path is not found', async () => {
@@ -233,20 +228,5 @@ describe('getNotesInFolder', () => {
 
 		const notes = store.getNotesInFolder('projects');
 		expect(notes.some((n) => n.path.endsWith('.gitkeep'))).toBe(false);
-	});
-});
-
-describe('getFolderTree', () => {
-	it('excludes .trash from the folder tree', async () => {
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-sha' } }))
-			.mockResolvedValueOnce(githubResponse({}));
-
-		const note = await store.createNote('inbox', 'Note To Trash', 'text');
-		await store.deleteNote(note.path);
-
-		const tree = store.getFolderTree();
-		expect(tree.some((f) => f.name === '.trash')).toBe(false);
 	});
 });

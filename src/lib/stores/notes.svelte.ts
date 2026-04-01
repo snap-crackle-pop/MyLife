@@ -175,28 +175,19 @@ export async function deleteNote(path: string) {
 	const note = notes.find((n) => n.path === path);
 	if (!note) return;
 
-	const trashPath = `.trash/${path.split('/').pop()}`;
 	const now = new Date().toISOString();
-	const trashed: Note = { ...note, path: trashPath, updatedAt: now, sha: '' };
 
-	// Optimistic: move to trash immediately
-	notes = [...notes.filter((n) => n.path !== path), trashed];
+	// Optimistic: remove immediately
+	notes = notes.filter((n) => n.path !== path);
 	await cache.deleteNote(path);
-	await cache.saveNote(trashed);
 
 	if (navigator.onLine && github) {
 		try {
-			const sha = await github.createFile(trashPath, note.content);
 			if (note.sha) await github.deleteFile(path, note.sha);
-			const updated = { ...trashed, sha };
-			notes = notes.map((n) => (n.path === trashPath ? updated : n));
-			await cache.saveNote(updated);
 		} catch {
-			await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
 			if (note.sha) await queueOp({ action: 'delete', path, sha: note.sha, queuedAt: now });
 		}
 	} else {
-		await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
 		if (note.sha) await queueOp({ action: 'delete', path, sha: note.sha, queuedAt: now });
 	}
 }
@@ -221,7 +212,7 @@ export function getPinnedNotes(): Note[] {
 }
 
 export function getFolderTree(): Folder[] {
-	return buildFolderTree(notes.map((n) => n.path)).filter((f) => f.name !== '.trash');
+	return buildFolderTree(notes.map((n) => n.path));
 }
 
 export async function createFolder(name: string): Promise<void> {
