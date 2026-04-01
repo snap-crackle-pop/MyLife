@@ -312,53 +312,24 @@ export async function deleteFolder(name: string): Promise<void> {
 	const toDelete = notes.filter((n) => n.path.startsWith(`${name}/`));
 	const now = new Date().toISOString();
 
-	// Optimistic: move real notes to trash and remove folder from store immediately
-	const trashedNotes: Note[] = [];
+	// Optimistic: remove all notes in folder from store and cache immediately
 	for (const note of toDelete) {
 		await cache.deleteNote(note.path);
-		if (!note.path.endsWith('.gitkeep')) {
-			const trashPath = `.trash/${note.path.split('/').pop()}`;
-			const trashed: Note = { ...note, path: trashPath, updatedAt: now, sha: '' };
-			trashedNotes.push(trashed);
-			await cache.saveNote(trashed);
-		}
 	}
-	notes = [...notes.filter((n) => !n.path.startsWith(`${name}/`)), ...trashedNotes];
+	notes = notes.filter((n) => !n.path.startsWith(`${name}/`));
 
-	// Sync to GitHub — each note is independent, failures are queued for retry
+	// Sync to GitHub — each file is independent
 	for (const note of toDelete) {
-		if (note.path.endsWith('.gitkeep')) {
-			if (navigator.onLine && github && note.sha) {
-				try {
-					await github.deleteFile(note.path, note.sha);
-				} catch {
-					// stale sha — will be cleaned up on next full sync
-				}
-			}
-		} else {
-			const trashPath = `.trash/${note.path.split('/').pop()}`;
-			if (navigator.onLine && github) {
-				try {
-					const sha = await github.createFile(trashPath, note.content);
-					if (note.sha) await github.deleteFile(note.path, note.sha);
-					const updated: Note = { ...note, path: trashPath, updatedAt: now, sha };
-					notes = notes.map((n) => (n.path === trashPath ? updated : n));
-					await cache.saveNote(updated);
-				} catch {
-					await queueOp({
-						action: 'create',
-						path: trashPath,
-						content: note.content,
-						queuedAt: now
-					});
-					if (note.sha)
-						await queueOp({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
-				}
-			} else {
-				await queueOp({ action: 'create', path: trashPath, content: note.content, queuedAt: now });
+		if (navigator.onLine && github) {
+			try {
+				if (note.sha) await github.deleteFile(note.path, note.sha);
+			} catch {
 				if (note.sha)
 					await queueOp({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
 			}
+		} else {
+			if (note.sha)
+				await queueOp({ action: 'delete', path: note.path, sha: note.sha, queuedAt: now });
 		}
 	}
 }

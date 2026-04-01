@@ -190,8 +190,8 @@ describe('deleteFolder', () => {
 	async function setupFolderWithNotes() {
 		mockFetch
 			.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n1' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n2' } }));
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'n1-sha' } }))
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'n2-sha' } }));
 
 		await store.createFolder('old-folder');
 		const n1 = await store.createNote('old-folder', 'Note One', 'text');
@@ -205,9 +205,7 @@ describe('deleteFolder', () => {
 
 		mockFetch
 			.mockResolvedValueOnce(githubResponse({})) // delete .gitkeep
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-1' } })) // trash note 1
 			.mockResolvedValueOnce(githubResponse({})) // delete note 1
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-2' } })) // trash note 2
 			.mockResolvedValueOnce(githubResponse({})); // delete note 2
 
 		await store.deleteFolder('old-folder');
@@ -216,53 +214,30 @@ describe('deleteFolder', () => {
 		expect(tree.some((f) => f.name === 'old-folder')).toBe(false);
 	});
 
-	it('moves real notes to .trash/ in store, not .gitkeep', async () => {
+	it('permanently removes notes, not moves to .trash/', async () => {
 		await setupFolderWithNotes();
 
 		mockFetch
 			.mockResolvedValueOnce(githubResponse({}))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-1' } }))
 			.mockResolvedValueOnce(githubResponse({}))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-2' } }))
 			.mockResolvedValueOnce(githubResponse({}));
 
 		await store.deleteFolder('old-folder');
 
 		const notes = store.getNotes();
-		const trashed = notes.filter((n) => n.path.startsWith('.trash/'));
-		expect(trashed.length).toBe(2);
-		expect(notes.some((n) => n.path === 'old-folder/.gitkeep')).toBe(false);
+		expect(notes.some((n) => n.path.startsWith('.trash/'))).toBe(false);
+		expect(notes.some((n) => n.path.startsWith('old-folder/'))).toBe(false);
 	});
 
-	it('patches trash SHA after API succeeds', async () => {
-		await setupFolderWithNotes();
-
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({})) // delete .gitkeep
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-sha-confirmed' } }))
-			.mockResolvedValueOnce(githubResponse({}))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'trash-sha-confirmed-2' } }))
-			.mockResolvedValueOnce(githubResponse({}));
-
-		await store.deleteFolder('old-folder');
-
-		const trashed = store.getNotes().filter((n) => n.path.startsWith('.trash/'));
-		expect(trashed.every((n) => n.sha.startsWith('trash-sha-confirmed'))).toBe(true);
-	});
-
-	it('queues create-trash and delete-original ops when API fails for notes', async () => {
+	it('queues delete ops for each file when API fails', async () => {
 		await setupFolderWithNotes();
 		mockFetch.mockRejectedValue(new Error('network error'));
 
 		await store.deleteFolder('old-folder');
 
 		const queue = await testCache.getSyncQueue();
-		const trashCreates = queue.filter((q) => q.action === 'create' && q.path.startsWith('.trash/'));
-		const origDeletes = queue.filter(
-			(q) => q.action === 'delete' && q.path.startsWith('old-folder/')
-		);
-		expect(trashCreates.length).toBe(2);
-		expect(origDeletes.length).toBe(2);
+		const deletes = queue.filter((q) => q.action === 'delete' && q.path.startsWith('old-folder/'));
+		expect(deletes.length).toBe(3); // .gitkeep + 2 notes
 	});
 
 	it('handles deleting an empty folder (only .gitkeep)', async () => {
@@ -275,21 +250,19 @@ describe('deleteFolder', () => {
 		await store.deleteFolder('empty-folder');
 
 		expect(store.getNotes().some((n) => n.path.startsWith('empty-folder/'))).toBe(false);
-		const trashed = store.getNotes().filter((n) => n.path.startsWith('.trash/'));
-		expect(trashed.length).toBe(0);
+		expect(store.getNotes().some((n) => n.path.startsWith('.trash/'))).toBe(false);
 	});
 
-	it('queues ops and skips API when offline', async () => {
+	it('queues delete ops and skips API when offline', async () => {
 		await setupFolderWithNotes();
 		Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });
 
 		await store.deleteFolder('old-folder');
 
 		expect(mockFetch).not.toHaveBeenCalled();
-
 		const queue = await testCache.getSyncQueue();
-		expect(queue.filter((q) => q.action === 'create' && q.path.startsWith('.trash/')).length).toBe(
-			2
-		);
+		expect(
+			queue.filter((q) => q.action === 'delete' && q.path.startsWith('old-folder/')).length
+		).toBe(3);
 	});
 });
