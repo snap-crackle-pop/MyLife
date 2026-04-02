@@ -1,7 +1,7 @@
 <script lang="ts">
 	import Sidebar from '$lib/components/Sidebar.svelte';
 	import { getFolderTree, createFolder } from '$lib/stores/notes.svelte';
-	import { getSidebarOpen, setSidebarOpen } from '$lib/stores/ui.svelte';
+	import { getSidebarOpen, setSidebarOpen, getTheme, toggleTheme } from '$lib/stores/ui.svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
 	import { page } from '$app/state';
@@ -11,6 +11,7 @@
 	let folders = $derived(getFolderTree());
 	let selectedFolder = $derived((page.params as { path?: string }).path ?? null);
 	let sidebarOpen = $derived(getSidebarOpen());
+	let theme = $derived(getTheme());
 
 	async function handleCreateFolder(name: string) {
 		await createFolder(name);
@@ -28,10 +29,12 @@
 	<Sidebar
 		{folders}
 		{selectedFolder}
+		{theme}
 		isOpen={sidebarOpen}
 		onselectfolder={handleSelectFolder}
 		oncreatefolder={handleCreateFolder}
 		onclose={() => setSidebarOpen(false)}
+		ontoggletheme={toggleTheme}
 	/>
 
 	{#if sidebarOpen}
