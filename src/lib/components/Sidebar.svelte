@@ -353,7 +353,7 @@
 	}
 
 	.search-wrap {
-		padding: 6px 8px;
+		padding: 0px 8px 6px 8px;
 	}
 
 	.search-input {
