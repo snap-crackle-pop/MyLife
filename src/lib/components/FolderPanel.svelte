@@ -87,10 +87,10 @@
 	}
 
 	let focused = $state(false);
+	let dictationBase = $state('');
 
 	const recognition = useSpeechRecognition((text: string) => {
-		const current = note?.content ?? '';
-		const newContent = current ? `${current} ${text}` : text;
+		const newContent = dictationBase ? `${dictationBase} ${text}` : text;
 		onsave?.(newContent);
 	});
 </script>
@@ -299,6 +299,7 @@
 					title="Hold to dictate"
 					onpointerdown={(e) => {
 						e.preventDefault();
+						dictationBase = note?.content ?? '';
 						recognition.start();
 					}}
 					onpointerup={() => recognition.stop()}
@@ -322,7 +323,11 @@
 		{/if}
 		<textarea
 			class="note-editor"
-			value={note?.content ?? ''}
+			value={recognition.listening && recognition.interim
+				? dictationBase
+					? `${dictationBase} ${recognition.interim}`
+					: recognition.interim
+				: (note?.content ?? '')}
 			oninput={handleInput}
 			placeholder="Start writing..."
 			onfocus={() => (focused = true)}

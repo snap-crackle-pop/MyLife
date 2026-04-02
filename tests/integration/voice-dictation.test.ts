@@ -119,11 +119,10 @@ describe('voice dictation toolbar', () => {
 		await fireEvent.focus(getTextarea());
 		await fireEvent.pointerDown(screen.getByRole('button', { name: 'Dictate' }));
 
-		// Simulate recognition result
-		// Minimal stub — only the path the component reads: results[0][0].transcript
+		// Simulate final recognition result
 		capturedInstance!.onresult?.({
 			results: {
-				0: { 0: { transcript: 'hello world' } }
+				0: { 0: { transcript: 'hello world' }, isFinal: true }
 			}
 		} as unknown as SpeechRecognitionEvent);
 
@@ -135,9 +134,9 @@ describe('voice dictation toolbar', () => {
 		await fireEvent.focus(getTextarea());
 		await fireEvent.pointerDown(screen.getByRole('button', { name: 'Dictate' }));
 
-		// Minimal stub — only the path the component reads: results[0][0].transcript
+		// Simulate final recognition result
 		capturedInstance!.onresult?.({
-			results: { 0: { 0: { transcript: 'first words' } } }
+			results: { 0: { 0: { transcript: 'first words' }, isFinal: true } }
 		} as unknown as SpeechRecognitionEvent);
 
 		expect(onsave).toHaveBeenCalledWith('first words');

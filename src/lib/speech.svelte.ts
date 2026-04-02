@@ -33,20 +33,29 @@ export function useSpeechRecognition(ontranscript: (text: string) => void) {
 
 	const supported = !!Impl;
 	let listening = $state(false);
+	let interim = $state('');
 	let recognition: SpeechRecognition | null = null;
 
 	function start() {
 		if (!Impl || listening) return;
 		recognition = new Impl();
-		recognition.interimResults = false;
+		recognition.interimResults = true;
 		recognition.continuous = false;
 		recognition.onresult = (e: SpeechRecognitionEvent) => {
-			ontranscript(e.results[0][0].transcript);
+			const result = e.results[0];
+			if (result.isFinal) {
+				interim = '';
+				ontranscript(result[0].transcript);
+			} else {
+				interim = result[0].transcript;
+			}
 		};
 		recognition.onerror = () => {
+			interim = '';
 			listening = false;
 		};
 		recognition.onend = () => {
+			interim = '';
 			listening = false;
 		};
 		listening = true;
@@ -55,6 +64,7 @@ export function useSpeechRecognition(ontranscript: (text: string) => void) {
 
 	function stop() {
 		recognition?.stop();
+		interim = '';
 		listening = false;
 	}
 
@@ -63,6 +73,9 @@ export function useSpeechRecognition(ontranscript: (text: string) => void) {
 		stop,
 		get listening() {
 			return listening;
+		},
+		get interim() {
+			return interim;
 		},
 		supported
 	};
