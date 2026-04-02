@@ -1,5 +1,31 @@
 import '@testing-library/jest-dom/vitest';
 
+// In-memory localStorage mock — Node 25 has a native localStorage but it
+// requires --localstorage-file to be set and lacks clear(). Provide a full
+// in-memory implementation so tests can use localStorage.clear() freely.
+const localStorageStore = new Map<string, string>();
+const localStorageMock: Storage = {
+	get length() {
+		return localStorageStore.size;
+	},
+	clear() {
+		localStorageStore.clear();
+	},
+	getItem(key: string) {
+		return localStorageStore.get(key) ?? null;
+	},
+	setItem(key: string, value: string) {
+		localStorageStore.set(key, value);
+	},
+	removeItem(key: string) {
+		localStorageStore.delete(key);
+	},
+	key(index: number) {
+		return [...localStorageStore.keys()][index] ?? null;
+	}
+};
+vi.stubGlobal('localStorage', localStorageMock);
+
 // In-memory mock for idb-keyval — used by ALL tests.
 // This gives us a real key-value store without needing IndexedDB in jsdom.
 const store = new Map<string, unknown>();
@@ -17,9 +43,10 @@ vi.mock('idb-keyval', () => ({
 	keys: vi.fn(() => Promise.resolve([...store.keys()]))
 }));
 
-// Reset store between tests
+// Reset stores between tests
 beforeEach(() => {
 	store.clear();
+	localStorageStore.clear();
 });
 
 // Export for tests that need direct store access

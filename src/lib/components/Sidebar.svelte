@@ -5,18 +5,24 @@
 		folders: Folder[];
 		selectedFolder: string | null;
 		isOpen?: boolean;
+		theme?: 'dark' | 'light';
 		onselectfolder?: (path: string) => void;
 		oncreatefolder?: (name: string) => void;
 		onclose?: () => void;
+		ontoggletheme?: () => void;
 	}
 
 	let {
 		folders,
 		selectedFolder,
 		isOpen = false,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		theme = 'dark',
 		onselectfolder,
 		oncreatefolder,
-		onclose
+		onclose,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		ontoggletheme
 	}: Props = $props();
 
 	let adding = $state(false);

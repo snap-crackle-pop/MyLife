@@ -1,5 +1,6 @@
 let sidebarOpen = $state(false);
 let sidebarCollapsed = $state(false);
+let theme = $state<'dark' | 'light'>((localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark');
 
 export function getSidebarOpen() {
 	return sidebarOpen;
@@ -15,4 +16,13 @@ export function getSidebarCollapsed() {
 
 export function toggleSidebarCollapsed() {
 	sidebarCollapsed = !sidebarCollapsed;
+}
+
+export function getTheme() {
+	return theme;
+}
+
+export function toggleTheme() {
+	theme = theme === 'dark' ? 'light' : 'dark';
+	localStorage.setItem('theme', theme);
 }
