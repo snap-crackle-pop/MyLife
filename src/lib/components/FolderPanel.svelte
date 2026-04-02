@@ -179,7 +179,7 @@
 							height="16"
 							viewBox="0 0 24 24"
 							fill="none"
-							stroke="currentColor"
+							stroke="var(--accent)"
 							stroke-width="2"
 						>
 							<path
