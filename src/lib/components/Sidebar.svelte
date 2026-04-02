@@ -360,7 +360,7 @@
 			display: flex;
 			align-items: center;
 			justify-content: flex-end;
-			padding: 0 8px 10px 16px;
+			padding: 0 8px 4px 16px;
 		}
 
 		.close-btn {
@@ -368,8 +368,8 @@
 		}
 
 		.folder-item {
-			min-height: 44px;
-			padding: 10px 16px;
+			min-height: 36px;
+			padding: 6px 16px;
 		}
 
 		.subfolder-item {
