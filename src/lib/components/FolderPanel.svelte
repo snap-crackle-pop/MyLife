@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Note } from '$lib/types';
+	import { useSpeechRecognition } from '$lib/speech.svelte';
 
 	interface Props {
 		folder: string;
@@ -84,6 +85,14 @@
 			onsave?.(value);
 		}, 800);
 	}
+
+	let focused = $state(false);
+
+	const recognition = useSpeechRecognition((text: string) => {
+		const current = note?.content ?? '';
+		const newContent = current ? `${current} ${text}` : text;
+		onsave?.(newContent);
+	});
 </script>
 
 <div class="panel">
@@ -279,12 +288,47 @@
 		</div>
 	{/if}
 
-	<textarea
-		class="note-editor"
-		value={note?.content ?? ''}
-		oninput={handleInput}
-		placeholder="Start writing..."
-	></textarea>
+	<div class="editor-wrapper">
+		{#if (focused || recognition.listening) && recognition.supported}
+			<div class="note-toolbar">
+				<button
+					class="mic-btn"
+					class:listening={recognition.listening}
+					aria-label="Dictate"
+					aria-pressed={recognition.listening}
+					title="Hold to dictate"
+					onpointerdown={(e) => {
+						e.preventDefault();
+						recognition.start();
+					}}
+					onpointerup={() => recognition.stop()}
+					onpointercancel={() => recognition.stop()}
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<rect x="9" y="2" width="6" height="12" rx="3" />
+						<path d="M5 10a7 7 0 0 0 14 0" />
+						<line x1="12" y1="17" x2="12" y2="22" />
+						<line x1="9" y1="22" x2="15" y2="22" />
+					</svg>
+				</button>
+			</div>
+		{/if}
+		<textarea
+			class="note-editor"
+			value={note?.content ?? ''}
+			oninput={handleInput}
+			placeholder="Start writing..."
+			onfocus={() => (focused = true)}
+			onblur={() => (focused = false)}
+		></textarea>
+	</div>
 </div>
 
 <style>
@@ -433,6 +477,59 @@
 		flex: 1;
 		font-size: 13px;
 		color: var(--text-secondary);
+	}
+
+	.editor-wrapper {
+		flex: 1;
+		position: relative;
+		overflow: hidden;
+		display: flex;
+	}
+
+	.note-toolbar {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		display: flex;
+		gap: 4px;
+		z-index: 1;
+	}
+
+	.mic-btn {
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		width: 32px;
+		height: 32px;
+		padding: 0;
+		background: transparent;
+		border: none;
+		border-radius: var(--radius);
+		color: var(--text-muted);
+		cursor: pointer;
+		transition:
+			color 0.1s,
+			background 0.1s;
+	}
+
+	.mic-btn:hover {
+		background: var(--bg-base);
+		color: var(--text-primary);
+	}
+
+	.mic-btn.listening {
+		color: var(--accent);
+		animation: mic-pulse 1s ease-in-out infinite;
+	}
+
+	@keyframes mic-pulse {
+		0%,
+		100% {
+			opacity: 1;
+		}
+		50% {
+			opacity: 0.5;
+		}
 	}
 
 	.note-editor {
