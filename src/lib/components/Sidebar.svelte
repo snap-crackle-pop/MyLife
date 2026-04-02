@@ -372,6 +372,10 @@
 			padding: 10px 16px;
 		}
 
+		.subfolder-item {
+			padding-left: 32px;
+		}
+
 		.action-btn {
 			min-height: 44px;
 			width: 44px;
