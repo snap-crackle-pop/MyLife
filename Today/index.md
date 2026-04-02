@@ -1,3 +1,0 @@
-Supermarket
-Apples
-Pears
