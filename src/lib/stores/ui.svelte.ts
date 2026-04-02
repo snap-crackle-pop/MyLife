@@ -1,6 +1,5 @@
 let sidebarOpen = $state(false);
 let sidebarCollapsed = $state(false);
-let selectedFolder = $state<string | null>(null);
 
 export function getSidebarOpen() {
 	return sidebarOpen;
@@ -16,12 +15,4 @@ export function getSidebarCollapsed() {
 
 export function toggleSidebarCollapsed() {
 	sidebarCollapsed = !sidebarCollapsed;
-}
-
-export function getSelectedFolder() {
-	return selectedFolder;
-}
-
-export function setSelectedFolder(folder: string | null) {
-	selectedFolder = folder;
 }
