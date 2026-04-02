@@ -43,7 +43,6 @@ describe('theme store', () => {
 });
 
 // ── Sidebar toggle button ─────────────────────────────────────────────────────
-// TODO(Task 4): Sidebar component not yet updated — unskip when toggle button is added
 
 describe('Sidebar theme toggle', () => {
 	it('shows Switch to light mode button when theme is dark', () => {
