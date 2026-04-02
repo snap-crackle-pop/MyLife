@@ -17,6 +17,21 @@
 	--font-mono: 'SF Mono', 'Fira Code', monospace;
 }
 
+[data-theme='light'] {
+	--bg-base: #eff1f5;
+	--bg-surface: #e6e9ef;
+	--bg-overlay: #dce0e8;
+	--border: #bcc0cc;
+	--text-primary: #4c4f69;
+	--text-secondary: #5c5f77;
+	--text-muted: #9ca0b0;
+	--accent: #1e66f5;
+	--accent-hover: #04a5e5;
+	--danger: #d20f39;
+	--success: #40a02b;
+	--warning: #df8e1d;
+}
+
 *,
 *::before,
 *::after {
