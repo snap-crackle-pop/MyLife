@@ -81,14 +81,7 @@
 					onclick={() => onselectfolder?.(folder.path)}
 				>
 					<span class="folder-icon">
-						<svg
-							width="16"
-							height="16"
-							viewBox="0 0 24 24"
-							fill="none"
-							stroke="currentColor"
-							stroke-width="2"
-						>
+						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
 							<path
 								d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
 							/>
@@ -230,7 +223,7 @@
 		align-items: center;
 		gap: 8px;
 		width: 100%;
-		padding: 8px 16px;
+		padding: 4px 16px;
 		font-size: 13px;
 		color: var(--text-secondary);
 		border-radius: 0;
@@ -250,7 +243,7 @@
 	}
 
 	.subfolder-item {
-		padding-left: 32px;
+		padding-left: 40px;
 		font-size: 12px;
 	}
 
@@ -368,12 +361,12 @@
 		}
 
 		.folder-item {
-			min-height: 36px;
-			padding: 6px 16px;
+			min-height: 32px;
+			padding: 4px 16px;
 		}
 
 		.subfolder-item {
-			padding-left: 32px;
+			padding-left: 40px;
 		}
 
 		.action-btn {
