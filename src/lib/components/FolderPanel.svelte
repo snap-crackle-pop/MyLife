@@ -87,6 +87,7 @@
 	}
 
 	let dictationBase = $state('');
+	let textareaEl = $state<HTMLTextAreaElement | null>(null);
 
 	const recognition = useSpeechRecognition((text: string) => {
 		const newContent = dictationBase ? `${dictationBase} ${text}` : text;
@@ -298,10 +299,14 @@
 					title="Hold to dictate"
 					onpointerdown={(e) => {
 						e.preventDefault();
+						textareaEl?.blur();
 						dictationBase = note?.content ?? '';
 						recognition.start();
 					}}
-					onpointerup={() => recognition.stop()}
+					onpointerup={() => {
+						recognition.stop();
+						textareaEl?.focus();
+					}}
 					onpointercancel={() => recognition.stop()}
 				>
 					<svg
@@ -329,6 +334,7 @@
 				: (note?.content ?? '')}
 			oninput={handleInput}
 			placeholder="Start writing..."
+			bind:this={textareaEl}
 		></textarea>
 	</div>
 </div>
