@@ -5,10 +5,15 @@
 	import { base } from '$app/paths';
 	import { NoteCache } from '$lib/cache';
 	import { initStore, loadNotes } from '$lib/stores/notes.svelte';
+	import { getTheme } from '$lib/stores/ui.svelte';
 	import { onMount } from 'svelte';
 
 	let { children } = $props();
 	let checking = $state(true);
+
+	$effect(() => {
+		document.documentElement.dataset.theme = getTheme();
+	});
 
 	onMount(async () => {
 		const cache = new NoteCache();
