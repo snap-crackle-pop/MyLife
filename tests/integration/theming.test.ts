@@ -45,7 +45,7 @@ describe('theme store', () => {
 // ── Sidebar toggle button ─────────────────────────────────────────────────────
 // TODO(Task 4): Sidebar component not yet updated — unskip when toggle button is added
 
-describe.skip('Sidebar theme toggle', () => {
+describe('Sidebar theme toggle', () => {
 	it('shows Switch to light mode button when theme is dark', () => {
 		render(Sidebar, {
 			props: { folders: [], selectedFolder: null, theme: 'dark' }
