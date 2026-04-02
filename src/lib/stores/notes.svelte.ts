@@ -44,7 +44,7 @@ export function buildFolderTree(paths: string[]): Folder[] {
 		}
 	}
 
-	return roots.sort((a, b) => a.name.localeCompare(b.name));
+	return roots;
 }
 
 // --- Helpers ---

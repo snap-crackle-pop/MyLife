@@ -44,9 +44,9 @@ describe('buildFolderTree', () => {
 		expect(buildFolderTree([])).toEqual([]);
 	});
 
-	it('sorts folders alphabetically', () => {
+	it('preserves insertion order', () => {
 		const tree = buildFolderTree(['zebra/a.md', 'alpha/b.md']);
-		expect(tree[0].name).toBe('alpha');
-		expect(tree[1].name).toBe('zebra');
+		expect(tree[0].name).toBe('zebra');
+		expect(tree[1].name).toBe('alpha');
 	});
 });

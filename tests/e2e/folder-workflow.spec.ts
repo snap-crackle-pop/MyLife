@@ -120,7 +120,7 @@ test.describe('Folder sidebar', () => {
 		await expect(page.locator('[data-folder]').filter({ hasText: 'work' })).toBeVisible();
 	});
 
-	test('folders are sorted alphabetically', async ({ page }) => {
+	test('folders appear in load order', async ({ page }) => {
 		await setupApp(page, [
 			{ path: 'zebra/index.md', content: '', sha: 'gk-z' },
 			{ path: 'alpha/index.md', content: '', sha: 'gk-a' },
@@ -128,9 +128,9 @@ test.describe('Folder sidebar', () => {
 		]);
 
 		const items = page.locator('[data-folder]');
-		await expect(items.nth(0)).toHaveText(/alpha/);
-		await expect(items.nth(1)).toHaveText(/mango/);
-		await expect(items.nth(2)).toHaveText(/zebra/);
+		await expect(items.nth(0)).toHaveText(/zebra/);
+		await expect(items.nth(1)).toHaveText(/alpha/);
+		await expect(items.nth(2)).toHaveText(/mango/);
 	});
 });
 

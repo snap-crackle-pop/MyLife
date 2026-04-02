@@ -101,7 +101,45 @@
 		{/if}
 
 		<div class="actions">
-			{#if !renaming && !confirming && !addingSubfolder}
+			{#if renaming}
+				<button
+					class="action-btn icon-btn confirm"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={onconfirmrename}
+					aria-label="Confirm rename"
+					title="Confirm rename"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<polyline points="20 6 9 17 4 12" />
+					</svg>
+				</button>
+				<button
+					class="action-btn icon-btn"
+					onmousedown={(e) => e.preventDefault()}
+					onclick={oncancelrename}
+					aria-label="Cancel rename"
+					title="Cancel rename"
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill="none"
+						stroke="currentColor"
+						stroke-width="2"
+					>
+						<line x1="18" y1="6" x2="6" y2="18" />
+						<line x1="6" y1="6" x2="18" y2="18" />
+					</svg>
+				</button>
+			{:else if !confirming && !addingSubfolder}
 				<button
 					class="action-btn icon-btn"
 					onclick={onstartrename}
@@ -191,6 +229,43 @@
 				onkeydown={handleSubfolderKey}
 				onblur={() => oncancelsubfolder?.()}
 			/>
+			<button
+				class="action-btn icon-btn confirm"
+				onmousedown={(e) => e.preventDefault()}
+				onclick={onconfirmsubfolder}
+				aria-label="Confirm sub-folder"
+				title="Confirm"
+			>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<polyline points="20 6 9 17 4 12" />
+				</svg>
+			</button>
+			<button
+				class="action-btn icon-btn"
+				onmousedown={(e) => e.preventDefault()}
+				onclick={oncancelsubfolder}
+				aria-label="Cancel sub-folder"
+				title="Cancel"
+			>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill="none"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<line x1="18" y1="6" x2="6" y2="18" />
+					<line x1="6" y1="6" x2="18" y2="18" />
+				</svg>
+			</button>
 		</div>
 	{/if}
 
@@ -298,6 +373,16 @@
 		background: var(--bg-surface);
 		color: var(--text-primary);
 		border: none;
+	}
+
+	.icon-btn.confirm {
+		color: var(--success);
+		border: none;
+	}
+
+	.icon-btn.confirm:hover {
+		background: var(--bg-surface);
+		color: var(--success);
 	}
 
 	.icon-btn.danger {

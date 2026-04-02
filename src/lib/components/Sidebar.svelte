@@ -165,7 +165,6 @@
 				<line x1="12" y1="11" x2="12" y2="17" />
 				<line x1="9" y1="14" x2="15" y2="14" />
 			</svg>
-			New folder
 		</button>
 		<button
 			class="theme-btn"
@@ -179,7 +178,7 @@
 					height="16"
 					viewBox="0 0 24 24"
 					fill="none"
-					stroke="currentColor"
+					stroke="#f9e2af"
 					stroke-width="2"
 				>
 					<circle cx="12" cy="12" r="5" />
@@ -280,18 +279,17 @@
 	.sidebar-actions {
 		display: flex;
 		border-top: 1px solid var(--border);
-		padding: 0px;
-		gap: 4px;
+		padding: 4px 8px;
+		justify-content: space-around;
 	}
 
 	.action-btn {
-		flex: 1;
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		gap: 5px;
-		padding: 6px 8px;
-		font-size: 12px;
+		width: 36px;
+		min-width: 36px;
+		padding: 6px;
 		color: var(--text-muted);
 		border-radius: var(--radius);
 		transition:
@@ -313,7 +311,6 @@
 		padding: 6px;
 		color: var(--text-muted);
 		border-radius: var(--radius);
-		border-left: 1px solid var(--border);
 		transition:
 			background 0.1s,
 			color 0.1s;
@@ -377,7 +374,8 @@
 
 		.action-btn {
 			min-height: 44px;
-			padding: 10px 8px;
+			width: 44px;
+			min-width: 44px;
 		}
 
 		.theme-btn {

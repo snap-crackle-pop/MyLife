@@ -23,9 +23,24 @@ This works on GitHub Pages because `svelte.config.js` already sets `fallback: '4
 
 `src/routes/+page.svelte` becomes the empty/home state — shown when no folder is selected ("Select a folder or create one to get started.").
 
-### Shared page content
+### Route grouping
 
-The bulk of the current `+page.svelte` (Sidebar, FolderPanel, mobile header, interaction state) moves into a shared component or into `[...path]/+page.svelte`, with `selectedFolder` received as a prop/param rather than read from the store.
+Both pages (root and `[...path]`) need the Sidebar and mobile header. A SvelteKit route group `(app)` is the clean solution:
+
+```
+src/routes/
+  (app)/
+    +layout.svelte      ← Sidebar, mobile header, app shell
+    +page.svelte        ← empty state (no folder selected)
+    [...path]/
+      +page.svelte      ← folder view (FolderPanel)
+  setup/
+    +page.svelte        ← unchanged, outside the group
+  +layout.svelte        ← auth check, initStore, loadNotes (unchanged)
+  +layout.ts            ← ssr=false, prerender=false (unchanged)
+```
+
+The `(app)/+layout.svelte` contains the Sidebar, drawer backdrop, and mobile header shell. Each child page fills in the main content area: empty state or `FolderPanel`. Interaction state (renaming, confirming, addingSubfolder) lives in `(app)/+layout.svelte` since it's needed by both the mobile header and `FolderPanel`.
 
 ### Navigation
 
