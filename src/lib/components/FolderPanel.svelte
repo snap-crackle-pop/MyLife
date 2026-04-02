@@ -303,10 +303,7 @@
 						dictationBase = note?.content ?? '';
 						recognition.start();
 					}}
-					onpointerup={() => {
-						recognition.stop();
-						textareaEl?.focus();
-					}}
+					onpointerup={() => recognition.stop()}
 					onpointercancel={() => recognition.stop()}
 				>
 					<svg
