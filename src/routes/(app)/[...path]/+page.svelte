@@ -21,6 +21,11 @@
 
 	let renaming = $state(false);
 	let renameName = $state('');
+	let mobileRenameInputEl = $state<HTMLInputElement | null>(null);
+
+	$effect(() => {
+		if (renaming && mobileRenameInputEl) mobileRenameInputEl.focus();
+	});
 	let confirming = $state(false);
 	let addingSubfolder = $state(false);
 	let subfolderName = $state('');
@@ -144,6 +149,7 @@
 
 	{#if renaming}
 		<input
+			bind:this={mobileRenameInputEl}
 			class="mobile-rename-input"
 			value={renameName}
 			oninput={(e) => (renameName = (e.target as HTMLInputElement).value)}

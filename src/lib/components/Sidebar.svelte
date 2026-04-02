@@ -306,7 +306,6 @@
 	.sidebar-actions {
 		display: flex;
 		border-top: 1px solid var(--border);
-		padding: 4px 8px;
 		justify-content: space-around;
 	}
 

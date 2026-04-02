@@ -60,9 +60,14 @@
 	const isTopLevel = $derived(!folder.includes('/'));
 
 	let subfolderInputEl = $state<HTMLInputElement | null>(null);
+	let renameInputEl = $state<HTMLInputElement | null>(null);
 
 	$effect(() => {
 		if (addingSubfolder && subfolderInputEl) subfolderInputEl.focus();
+	});
+
+	$effect(() => {
+		if (renaming && renameInputEl) renameInputEl.focus();
 	});
 
 	let saveTimer: ReturnType<typeof setTimeout> | null = null;
@@ -99,6 +104,7 @@
 	<header class="panel-header">
 		{#if renaming}
 			<input
+				bind:this={renameInputEl}
 				class="rename-input"
 				value={renameName}
 				oninput={(e) => onrenameinput?.((e.target as HTMLInputElement).value)}
