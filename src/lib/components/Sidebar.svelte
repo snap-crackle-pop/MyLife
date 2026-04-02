@@ -27,6 +27,25 @@
 	let newFolderName = $state('');
 	let inputEl = $state<HTMLInputElement | null>(null);
 
+	let searchQuery = $state('');
+
+	let filteredFolders = $derived.by(() => {
+		if (!searchQuery.trim()) return folders;
+		const q = searchQuery.trim().toLowerCase();
+		const result: Folder[] = [];
+		for (const folder of folders) {
+			if (folder.name.toLowerCase().includes(q)) {
+				result.push({ ...folder, children: [] });
+			} else {
+				const matchingChildren = folder.children.filter((c) => c.name.toLowerCase().includes(q));
+				if (matchingChildren.length > 0) {
+					result.push({ ...folder, children: matchingChildren });
+				}
+			}
+		}
+		return result;
+	});
+
 	function startAdding() {
 		adding = true;
 		newFolderName = '';
@@ -47,6 +66,10 @@
 		adding = false;
 		newFolderName = '';
 	}
+
+	$effect(() => {
+		if (!isOpen) searchQuery = '';
+	});
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Enter') confirmAdd();
@@ -71,8 +94,19 @@
 		</button>
 	</div>
 
+	<div class="search-wrap">
+		<input
+			class="search-input"
+			type="search"
+			placeholder="Search folders…"
+			bind:value={searchQuery}
+			autocomplete="off"
+			spellcheck={false}
+		/>
+	</div>
+
 	<ul class="folder-list">
-		{#each folders as folder (folder.path)}
+		{#each filteredFolders as folder (folder.path)}
 			<li>
 				<button
 					class="folder-item"
@@ -316,6 +350,30 @@
 
 	.sidebar-header {
 		display: none;
+	}
+
+	.search-wrap {
+		padding: 6px 8px;
+	}
+
+	.search-input {
+		width: 100%;
+		box-sizing: border-box;
+		padding: 6px 12px;
+		font-size: 13px;
+		color: var(--text-primary);
+		background: var(--bg-surface);
+		border: 1px solid var(--border);
+		border-radius: var(--radius);
+		outline: none;
+	}
+
+	.search-input::placeholder {
+		color: var(--text-muted);
+	}
+
+	.search-input:focus {
+		border-color: var(--accent);
 	}
 
 	.close-btn {
