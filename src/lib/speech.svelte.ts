@@ -1,4 +1,6 @@
-// SpeechRecognition interface definition
+/// <reference types="@types/web" />
+
+// Minimal SpeechRecognition interface for type-checking (full types from @types/web)
 interface SpeechRecognition extends EventTarget {
 	continuous: boolean;
 	interimResults: boolean;
@@ -34,7 +36,7 @@ export function useSpeechRecognition(ontranscript: (text: string) => void) {
 	let recognition: SpeechRecognition | null = null;
 
 	function start() {
-		if (!Impl) return;
+		if (!Impl || listening) return;
 		recognition = new Impl();
 		recognition.interimResults = false;
 		recognition.continuous = false;
