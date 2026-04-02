@@ -86,7 +86,6 @@
 		}, 800);
 	}
 
-	let focused = $state(false);
 	let dictationBase = $state('');
 
 	const recognition = useSpeechRecognition((text: string) => {
@@ -289,7 +288,7 @@
 	{/if}
 
 	<div class="editor-wrapper">
-		{#if (focused || recognition.listening) && recognition.supported}
+		{#if recognition.supported}
 			<div class="note-toolbar">
 				<button
 					class="mic-btn"
@@ -306,8 +305,8 @@
 					onpointercancel={() => recognition.stop()}
 				>
 					<svg
-						width="16"
-						height="16"
+						width="24"
+						height="24"
 						viewBox="0 0 24 24"
 						fill="none"
 						stroke="currentColor"
@@ -330,8 +329,6 @@
 				: (note?.content ?? '')}
 			oninput={handleInput}
 			placeholder="Start writing..."
-			onfocus={() => (focused = true)}
-			onblur={() => (focused = false)}
 		></textarea>
 	</div>
 </div>
@@ -493,8 +490,9 @@
 
 	.note-toolbar {
 		position: absolute;
-		top: 8px;
-		right: 8px;
+		bottom: 24px;
+		left: 50%;
+		transform: translateX(-50%);
 		display: flex;
 		gap: 4px;
 		z-index: 1;
@@ -504,21 +502,22 @@
 		display: flex;
 		align-items: center;
 		justify-content: center;
-		width: 32px;
-		height: 32px;
+		width: 48px;
+		height: 48px;
 		padding: 0;
-		background: transparent;
-		border: none;
-		border-radius: var(--radius);
+		background: var(--bg-base);
+		border: 1px solid var(--border);
+		border-radius: 50%;
 		color: var(--text-muted);
 		cursor: pointer;
 		transition:
 			color 0.1s,
-			background 0.1s;
+			background 0.1s,
+			border-color 0.1s;
 	}
 
 	.mic-btn:hover {
-		background: var(--bg-base);
+		border-color: var(--text-secondary);
 		color: var(--text-primary);
 	}
 

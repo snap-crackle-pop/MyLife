@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
-import { render, screen, fireEvent, waitFor } from '@testing-library/svelte';
+import { render, screen, fireEvent } from '@testing-library/svelte';
 import FolderPanel from '$lib/components/FolderPanel.svelte';
 import { createTestNote } from '../factories';
 
@@ -69,24 +69,9 @@ function getTextarea() {
 // ── Tests ─────────────────────────────────────────────────────────────────────
 
 describe('voice dictation toolbar', () => {
-	it('mic button is not in DOM when textarea is not focused', () => {
+	it('mic button is always visible when speech is supported', () => {
 		renderPanel();
-		expect(screen.queryByRole('button', { name: 'Dictate' })).not.toBeInTheDocument();
-	});
-
-	it('mic button appears when textarea is focused', async () => {
-		renderPanel();
-		await fireEvent.focus(getTextarea());
 		expect(screen.getByRole('button', { name: 'Dictate' })).toBeInTheDocument();
-	});
-
-	it('mic button disappears when textarea loses focus', async () => {
-		renderPanel();
-		await fireEvent.focus(getTextarea());
-		await fireEvent.blur(getTextarea());
-		await waitFor(() =>
-			expect(screen.queryByRole('button', { name: 'Dictate' })).not.toBeInTheDocument()
-		);
 	});
 
 	it('calls recognition.start() on pointerdown', async () => {
