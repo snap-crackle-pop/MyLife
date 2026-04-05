@@ -4,6 +4,7 @@ import type { Note, SyncQueueItem } from './types';
 const NOTE_PREFIX = 'note:';
 const SYNC_QUEUE_KEY = 'sync-queue';
 const CONFIG_KEY = 'app-config';
+const STARRED_KEY = 'starred-folders';
 
 export class NoteCache {
 	async saveNote(note: Note): Promise<void> {
@@ -43,5 +44,13 @@ export class NoteCache {
 
 	async getConfig(): Promise<{ token: string; repo: string } | undefined> {
 		return get(CONFIG_KEY);
+	}
+
+	async saveStarredFolders(data: { paths: string[]; sha: string }): Promise<void> {
+		await set(STARRED_KEY, data);
+	}
+
+	async getStarredFolders(): Promise<{ paths: string[]; sha: string } | undefined> {
+		return get<{ paths: string[]; sha: string }>(STARRED_KEY);
 	}
 }
