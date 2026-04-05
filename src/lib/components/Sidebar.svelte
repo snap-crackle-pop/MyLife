@@ -6,6 +6,7 @@
 		selectedFolder: string | null;
 		isOpen?: boolean;
 		theme?: 'dark' | 'light';
+		starredFolders?: string[];
 		onselectfolder?: (path: string) => void;
 		oncreatefolder?: (name: string) => void;
 		onclose?: () => void;
@@ -17,6 +18,7 @@
 		selectedFolder,
 		isOpen = false,
 		theme = 'dark',
+		starredFolders = [],
 		onselectfolder,
 		oncreatefolder,
 		onclose,
@@ -26,14 +28,29 @@
 	let adding = $state(false);
 	let newFolderName = $state('');
 	let inputEl = $state<HTMLInputElement | null>(null);
-
 	let searchQuery = $state('');
+	let showStarredOnly = $state(false);
 
 	let filteredFolders = $derived.by(() => {
-		if (!searchQuery.trim()) return folders;
+		// Step 1: apply star filter
+		let base = folders;
+		if (showStarredOnly) {
+			const starFiltered: Folder[] = [];
+			for (const folder of folders) {
+				const folderStarred = starredFolders.includes(folder.path);
+				const starredChildren = folder.children.filter((c) => starredFolders.includes(c.path));
+				if (folderStarred || starredChildren.length > 0) {
+					starFiltered.push({ ...folder, children: starredChildren });
+				}
+			}
+			base = starFiltered;
+		}
+
+		// Step 2: apply search filter
+		if (!searchQuery.trim()) return base;
 		const q = searchQuery.trim().toLowerCase();
 		const result: Folder[] = [];
-		for (const folder of folders) {
+		for (const folder of base) {
 			if (folder.name.toLowerCase().includes(q)) {
 				result.push({ ...folder, children: [] });
 			} else {
@@ -121,7 +138,16 @@
 							/>
 						</svg>
 					</span>
-					{folder.name}
+					<span class="folder-name">{folder.name}</span>
+					{#if starredFolders.includes(folder.path)}
+						<span class="folder-star" aria-hidden="true">
+							<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--warning)" stroke="none">
+								<polygon
+									points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+								/>
+							</svg>
+						</span>
+					{/if}
 				</button>
 			</li>
 			{#each folder.children as child (child.path)}
@@ -146,7 +172,16 @@
 								/>
 							</svg>
 						</span>
-						{child.name}
+						<span class="folder-name">{child.name}</span>
+						{#if starredFolders.includes(child.path)}
+							<span class="folder-star" aria-hidden="true">
+								<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--warning)" stroke="none">
+									<polygon
+										points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+									/>
+								</svg>
+							</span>
+						{/if}
 					</button>
 				</li>
 			{/each}
@@ -191,6 +226,25 @@
 				<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
 				<line x1="12" y1="11" x2="12" y2="17" />
 				<line x1="9" y1="14" x2="15" y2="14" />
+			</svg>
+		</button>
+		<button
+			class="action-btn"
+			onclick={() => (showStarredOnly = !showStarredOnly)}
+			aria-label={showStarredOnly ? 'Show all folders' : 'Show starred folders'}
+			title={showStarredOnly ? 'Show all folders' : 'Show starred folders'}
+		>
+			<svg
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill={showStarredOnly ? 'var(--warning)' : 'none'}
+				stroke={showStarredOnly ? 'none' : 'currentColor'}
+				stroke-width="2"
+			>
+				<polygon
+					points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+				/>
 			</svg>
 		</button>
 		<button
@@ -301,6 +355,19 @@
 		color: var(--text-muted);
 		display: flex;
 		align-items: center;
+	}
+
+	.folder-name {
+		flex: 1;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.folder-star {
+		display: flex;
+		align-items: center;
+		flex-shrink: 0;
 	}
 
 	.sidebar-actions {
