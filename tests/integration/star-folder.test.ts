@@ -82,16 +82,22 @@ describe('toggleStarFolder', () => {
 	});
 
 	it('patches starsSha after GitHub responds', async () => {
+		// First toggle — creates, returns first-sha
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'first-sha' } }));
 		await store.toggleStarFolder('inbox');
 		mockFetch.mockReset();
 
-		// Second call should use updated SHA
+		// Second toggle — updates using first-sha, returns second-sha
 		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'second-sha' } }));
 		await store.toggleStarFolder('work');
+		mockFetch.mockReset();
+
+		// Third toggle — should now use second-sha (the patched value)
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'third-sha' } }));
+		await store.toggleStarFolder('archive');
 
 		const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-		expect(body.sha).toBe('first-sha');
+		expect(body.sha).toBe('second-sha');
 	});
 
 	it('saves starred folders to IndexedDB cache', async () => {
@@ -131,5 +137,21 @@ describe('loadNotes — star bootstrap', () => {
 		await store.loadNotes();
 
 		expect(store.isStarredFolder('cached-inbox')).toBe(true);
+	});
+
+	it('fetches stars from GitHub and updates cache when online', async () => {
+		// pushOfflineQueue reads cache (no fetch if queue empty)
+		// fullSync: listFiles returns empty tree (no .md files to fetch)
+		mockFetch.mockResolvedValueOnce(githubResponse({ tree: [] }));
+		// getFileContent('_stars.json')
+		mockFetch.mockResolvedValueOnce(
+			githubResponse({ content: btoa(JSON.stringify(['remote-folder'])), sha: 'remote-sha' })
+		);
+
+		await store.loadNotes();
+
+		expect(store.isStarredFolder('remote-folder')).toBe(true);
+		const cached = idbStore.get('starred-folders') as { paths: string[]; sha: string };
+		expect(cached.sha).toBe('remote-sha');
 	});
 });
