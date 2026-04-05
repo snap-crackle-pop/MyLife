@@ -60,6 +60,8 @@ async function queueOp(item: SyncQueueItem) {
 let notes = $state<Note[]>([]);
 let loading = $state(false);
 let initialized = $state(false);
+let starredFolders = $state<string[]>([]);
+let starsSha = $state<string>('');
 
 let github: GitHubClient | null = null;
 const cache = new NoteCache();
@@ -82,22 +84,81 @@ export function isInitialized() {
 	return initialized;
 }
 
+export function getStarredFolders(): string[] {
+	return starredFolders;
+}
+
+export function isStarredFolder(path: string): boolean {
+	return starredFolders.includes(path);
+}
+
+export async function toggleStarFolder(path: string): Promise<void> {
+	const already = starredFolders.includes(path);
+	starredFolders = already ? starredFolders.filter((p) => p !== path) : [...starredFolders, path];
+
+	await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+
+	const json = JSON.stringify(starredFolders);
+	const now = new Date().toISOString();
+
+	if (navigator.onLine && github) {
+		try {
+			const sha = starsSha
+				? await github.updateFile('_stars.json', json, starsSha)
+				: await github.createFile('_stars.json', json);
+			starsSha = sha;
+			await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+		} catch {
+			await queueOp({
+				action: starsSha ? 'update' : 'create',
+				path: '_stars.json',
+				content: json,
+				sha: starsSha ? starsSha : undefined,
+				queuedAt: now
+			});
+		}
+	} else {
+		await queueOp({
+			action: starsSha ? 'update' : 'create',
+			path: '_stars.json',
+			content: json,
+			sha: starsSha ? starsSha : undefined,
+			queuedAt: now
+		});
+	}
+}
+
 export async function loadNotes() {
 	loading = true;
 	try {
+		// Load starred folders from cache immediately (before network)
+		const cachedStars = await cache.getStarredFolders();
+		if (cachedStars) {
+			starredFolders = cachedStars.paths;
+			starsSha = cachedStars.sha;
+		}
+
 		const cached = await cache.getAllNotes();
 		if (cached.length > 0) {
 			notes = cached;
 			initialized = true;
 		}
 
-		if (navigator.onLine && sync) {
+		if (navigator.onLine && sync && github) {
 			try {
 				await sync.pushOfflineQueue();
 				const synced = await sync.fullSync();
 				notes = synced;
 			} catch {
 				// GitHub sync failed — keep showing cached notes
+			}
+			try {
+				const starsFile = await github.getFileContent('_stars.json');
+				starredFolders = JSON.parse(starsFile.content) as string[];
+				starsSha = starsFile.sha;
+				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+			} catch {
+				// _stars.json doesn't exist yet — keep cached/empty values
 			}
 		}
 
