@@ -338,6 +338,38 @@ export async function renameFolder(oldName: string, newName: string): Promise<vo
 	}
 	notes = [...notes.filter((n) => !n.path.startsWith(`${oldName}/`)), ...renamed];
 
+	// Update starred state if the renamed folder was starred
+	if (starredFolders.includes(oldName)) {
+		starredFolders = starredFolders.map((p) => (p === oldName ? newName : p));
+		await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+		const json = JSON.stringify(starredFolders);
+		if (navigator.onLine && github) {
+			try {
+				const sha = starsSha
+					? await github.updateFile('_stars.json', json, starsSha)
+					: await github.createFile('_stars.json', json);
+				starsSha = sha;
+				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+			} catch {
+				await queueOp({
+					action: starsSha ? 'update' : 'create',
+					path: '_stars.json',
+					content: json,
+					sha: starsSha ? starsSha : undefined,
+					queuedAt: now
+				});
+			}
+		} else {
+			await queueOp({
+				action: starsSha ? 'update' : 'create',
+				path: '_stars.json',
+				content: json,
+				sha: starsSha ? starsSha : undefined,
+				queuedAt: now
+			});
+		}
+	}
+
 	// Sync to GitHub — each file is independent
 	for (let i = 0; i < toMove.length; i++) {
 		const original = toMove[i];
@@ -382,6 +414,38 @@ export async function deleteFolder(name: string): Promise<void> {
 		await cache.deleteNote(note.path);
 	}
 	notes = notes.filter((n) => !n.path.startsWith(`${name}/`));
+
+	// Clean up starred state if this folder was starred
+	if (starredFolders.includes(name)) {
+		starredFolders = starredFolders.filter((p) => p !== name);
+		await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+		const json = JSON.stringify(starredFolders);
+		if (navigator.onLine && github) {
+			try {
+				const sha = starsSha
+					? await github.updateFile('_stars.json', json, starsSha)
+					: await github.createFile('_stars.json', json);
+				starsSha = sha;
+				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+			} catch {
+				await queueOp({
+					action: starsSha ? 'update' : 'create',
+					path: '_stars.json',
+					content: json,
+					sha: starsSha ? starsSha : undefined,
+					queuedAt: now
+				});
+			}
+		} else {
+			await queueOp({
+				action: starsSha ? 'update' : 'create',
+				path: '_stars.json',
+				content: json,
+				sha: starsSha ? starsSha : undefined,
+				queuedAt: now
+			});
+		}
+	}
 
 	// Sync to GitHub — each file is independent
 	for (const note of toDelete) {

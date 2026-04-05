@@ -129,6 +129,48 @@ describe('toggleStarFolder', () => {
 	});
 });
 
+describe('starred folder cleanup', () => {
+	it('removes deleted folder from starredFolders', async () => {
+		// Setup: create folder, star it
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } })); // createFolder
+		await store.createFolder('inbox');
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'star-sha' } })); // toggleStarFolder
+		await store.toggleStarFolder('inbox');
+		expect(store.isStarredFolder('inbox')).toBe(true);
+		mockFetch.mockReset();
+
+		// Delete folder — mock deleteFile + _stars.json update
+		mockFetch.mockResolvedValueOnce(githubResponse({})); // deleteFile
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'stars-updated' } })); // update _stars.json
+
+		await store.deleteFolder('inbox');
+
+		expect(store.isStarredFolder('inbox')).toBe(false);
+		expect(store.getStarredFolders()).not.toContain('inbox');
+	});
+
+	it('updates starred path when folder is renamed', async () => {
+		// Setup: create folder, star it
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } })); // createFolder
+		await store.createFolder('work');
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'star-sha' } })); // toggleStarFolder
+		await store.toggleStarFolder('work');
+		expect(store.isStarredFolder('work')).toBe(true);
+		mockFetch.mockReset();
+
+		// Rename folder — mock create new + delete old + _stars.json update
+		mockFetch
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } })) // create new index.md
+			.mockResolvedValueOnce(githubResponse({})) // delete old index.md
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'stars-updated' } })); // update _stars.json
+
+		await store.renameFolder('work', 'projects');
+
+		expect(store.isStarredFolder('work')).toBe(false);
+		expect(store.isStarredFolder('projects')).toBe(true);
+	});
+});
+
 describe('loadNotes — star bootstrap', () => {
 	it('loads starred folders from cache when offline', async () => {
 		idbStore.set('starred-folders', { paths: ['cached-inbox'], sha: 'sha-from-cache' });
