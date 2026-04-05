@@ -11,13 +11,16 @@
 		renameFolder,
 		deleteFolder,
 		createFolder,
-		isInitialized
+		isInitialized,
+		toggleStarFolder,
+		isStarredFolder
 	} from '$lib/stores/notes.svelte';
 	import { setSidebarOpen } from '$lib/stores/ui.svelte';
 
 	let selectedFolder = $derived(page.params.path!);
 	let folders = $derived(getFolderTree());
 	let folderNote = $derived(getFolderNote(selectedFolder));
+	let starred = $derived(isStarredFolder(selectedFolder));
 
 	let renaming = $state(false);
 	let renameName = $state('');
@@ -221,6 +224,24 @@
 					</svg>
 				</button>
 			{/if}
+			<button
+				class="header-icon-btn"
+				onclick={() => toggleStarFolder(selectedFolder)}
+				aria-label={starred ? 'Unstar folder' : 'Star folder'}
+			>
+				<svg
+					width="16"
+					height="16"
+					viewBox="0 0 24 24"
+					fill={starred ? 'var(--warning)' : 'none'}
+					stroke={starred ? 'none' : 'currentColor'}
+					stroke-width="2"
+				>
+					<polygon
+						points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+					/>
+				</svg>
+			</button>
 			<button class="header-icon-btn danger" onclick={startDelete} aria-label="Delete">
 				<svg
 					width="16"
@@ -249,6 +270,7 @@
 	{confirming}
 	{addingSubfolder}
 	{subfolderName}
+	{starred}
 	onstartrename={startRename}
 	onstartdelete={startDelete}
 	onstartaddsubfolder={startAddSubfolder}
@@ -261,6 +283,7 @@
 	onconfirmsubfolder={confirmAddSubfolder}
 	oncancelsubfolder={cancelAddSubfolder}
 	onsave={handleSave}
+	ontogglestar={() => toggleStarFolder(selectedFolder)}
 />
 
 <style>

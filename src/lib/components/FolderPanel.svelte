@@ -10,6 +10,7 @@
 		confirming: boolean;
 		addingSubfolder?: boolean;
 		subfolderName?: string;
+		starred?: boolean;
 		onstartrename?: () => void;
 		onstartdelete?: () => void;
 		onstartaddsubfolder?: () => void;
@@ -22,6 +23,7 @@
 		onconfirmsubfolder?: () => void;
 		oncancelsubfolder?: () => void;
 		onsave?: (content: string) => void;
+		ontogglestar?: () => void;
 	}
 
 	let {
@@ -32,6 +34,7 @@
 		confirming,
 		addingSubfolder = false,
 		subfolderName = '',
+		starred = false,
 		onstartrename,
 		onstartdelete,
 		onstartaddsubfolder,
@@ -43,7 +46,8 @@
 		onsubfolderinput,
 		onconfirmsubfolder,
 		oncancelsubfolder,
-		onsave
+		onsave,
+		ontogglestar
 	}: Props = $props();
 
 	function handleRenameKey(e: KeyboardEvent) {
@@ -196,6 +200,25 @@
 						</svg>
 					</button>
 				{/if}
+				<button
+					class="action-btn icon-btn"
+					onclick={ontogglestar}
+					aria-label={starred ? 'Unstar folder' : 'Star folder'}
+					title={starred ? 'Unstar folder' : 'Star folder'}
+				>
+					<svg
+						width="16"
+						height="16"
+						viewBox="0 0 24 24"
+						fill={starred ? 'var(--warning)' : 'none'}
+						stroke={starred ? 'none' : 'currentColor'}
+						stroke-width="2"
+					>
+						<polygon
+							points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+						/>
+					</svg>
+				</button>
 				<button
 					class="action-btn icon-btn danger"
 					onclick={onstartdelete}
