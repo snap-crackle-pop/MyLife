@@ -231,6 +231,7 @@
 		<button
 			class="action-btn"
 			onclick={() => (showStarredOnly = !showStarredOnly)}
+			aria-pressed={showStarredOnly}
 			aria-label={showStarredOnly ? 'Show all folders' : 'Show starred folders'}
 			title={showStarredOnly ? 'Show all folders' : 'Show starred folders'}
 		>
