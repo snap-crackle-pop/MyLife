@@ -1,6 +1,11 @@
 <script lang="ts">
 	import Sidebar from '$lib/components/Sidebar.svelte';
-	import { getFolderTree, createFolder, getStarredFolders } from '$lib/stores/notes.svelte';
+	import {
+		getFolderTree,
+		createFolder,
+		getStarredFolders,
+		getNotes
+	} from '$lib/stores/notes.svelte';
 	import { getSidebarOpen, setSidebarOpen, getTheme, toggleTheme } from '$lib/stores/ui.svelte';
 	import { goto } from '$app/navigation';
 	import { base } from '$app/paths';
@@ -10,6 +15,7 @@
 
 	let folders = $derived(getFolderTree());
 	let selectedFolder = $derived((page.params as { path?: string }).path ?? null);
+	let notes = $derived(getNotes());
 	let sidebarOpen = $derived(getSidebarOpen());
 	let theme = $derived(getTheme());
 	let starredFolders = $derived(getStarredFolders());
@@ -30,6 +36,7 @@
 	<Sidebar
 		{folders}
 		{selectedFolder}
+		{notes}
 		{theme}
 		{starredFolders}
 		isOpen={sidebarOpen}

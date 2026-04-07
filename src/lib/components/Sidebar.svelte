@@ -1,9 +1,12 @@
 <script lang="ts">
-	import type { Folder } from '$lib/types';
+	import type { Note, Folder } from '$lib/types';
+	// eslint-disable-next-line @typescript-eslint/no-unused-vars
+	import { extractSnippet, countMatches } from '$lib/search';
 
 	interface Props {
 		folders: Folder[];
 		selectedFolder: string | null;
+		notes?: Note[];
 		isOpen?: boolean;
 		theme?: 'dark' | 'light';
 		starredFolders?: string[];
@@ -16,6 +19,8 @@
 	let {
 		folders,
 		selectedFolder,
+		// eslint-disable-next-line @typescript-eslint/no-unused-vars
+		notes = [],
 		isOpen = false,
 		theme = 'dark',
 		starredFolders = [],
