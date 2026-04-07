@@ -1,7 +1,5 @@
 <script lang="ts">
 	import type { Note, Folder } from '$lib/types';
-	// eslint-disable-next-line @typescript-eslint/no-unused-vars
-	import { extractSnippet, countMatches } from '$lib/search';
 
 	interface Props {
 		folders: Folder[];
