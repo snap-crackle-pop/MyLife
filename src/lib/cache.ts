@@ -47,7 +47,7 @@ export class NoteCache {
 	}
 
 	async saveStarredFolders(data: { paths: string[]; sha: string }): Promise<void> {
-		await set(STARRED_KEY, data);
+		await set(STARRED_KEY, { paths: [...data.paths], sha: data.sha });
 	}
 
 	async getStarredFolders(): Promise<{ paths: string[]; sha: string } | undefined> {

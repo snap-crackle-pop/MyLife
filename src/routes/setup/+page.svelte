@@ -40,15 +40,15 @@
 
 		<form onsubmit={handleSubmit}>
 			<label>
-				<span>GitHub Personal Access Token</span>
-				<input type="password" bind:value={token} placeholder="ghp_xxxxxxxxxxxx" required />
-				<span class="hint">Needs "repo" scope for private repo access.</span>
-			</label>
-
-			<label>
 				<span>Repository</span>
 				<input type="text" bind:value={repo} placeholder="username/mylife-notes" required />
 				<span class="hint">Format: owner/repo-name</span>
+			</label>
+
+			<label>
+				<span>GitHub Personal Access Token</span>
+				<input type="password" bind:value={token} placeholder="ghp_xxxxxxxxxxxx" required />
+				<span class="hint">Needs "repo" scope for private repo access.</span>
 			</label>
 
 			{#if error}

@@ -92,22 +92,23 @@ export function isStarredFolder(path: string): boolean {
 	return starredFolders.includes(path);
 }
 
-export async function toggleStarFolder(path: string): Promise<void> {
-	const already = starredFolders.includes(path);
-	starredFolders = already ? starredFolders.filter((p) => p !== path) : [...starredFolders, path];
-
-	await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
-
-	const json = JSON.stringify(starredFolders);
-	const now = new Date().toISOString();
-
+async function writeStars(paths: string[], json: string, now: string): Promise<void> {
 	if (navigator.onLine && github) {
 		try {
-			const sha = starsSha
-				? await github.updateFile('_stars.json', json, starsSha)
-				: await github.createFile('_stars.json', json);
+			let sha: string;
+			if (starsSha) {
+				sha = await github.updateFile('_stars.json', json, starsSha);
+			} else {
+				try {
+					sha = await github.createFile('_stars.json', json);
+				} catch {
+					// File already exists but we don't have its sha — fetch and update
+					const existing = await github.getFileContent('_stars.json');
+					sha = await github.updateFile('_stars.json', json, existing.sha);
+				}
+			}
 			starsSha = sha;
-			await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+			await cache.saveStarredFolders({ paths, sha: starsSha });
 		} catch {
 			await queueOp({
 				action: starsSha ? 'update' : 'create',
@@ -126,6 +127,17 @@ export async function toggleStarFolder(path: string): Promise<void> {
 			queuedAt: now
 		});
 	}
+}
+
+export async function toggleStarFolder(path: string): Promise<void> {
+	const already = starredFolders.includes(path);
+	starredFolders = already ? starredFolders.filter((p) => p !== path) : [...starredFolders, path];
+
+	await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+
+	const json = JSON.stringify(starredFolders);
+	const now = new Date().toISOString();
+	await writeStars(starredFolders, json, now);
 }
 
 export async function loadNotes() {
@@ -158,7 +170,17 @@ export async function loadNotes() {
 				starsSha = starsFile.sha;
 				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
 			} catch {
-				// _stars.json doesn't exist yet — keep cached/empty values
+				// _stars.json doesn't exist — if we have cached stars, recreate it on GitHub
+				if (starredFolders.length > 0) {
+					try {
+						const json = JSON.stringify(starredFolders);
+						const sha = await github.createFile('_stars.json', json);
+						starsSha = sha;
+						await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
+					} catch {
+						// offline or other error — keep cached values, will retry on next load
+					}
+				}
 			}
 		}
 
@@ -343,31 +365,7 @@ export async function renameFolder(oldName: string, newName: string): Promise<vo
 		starredFolders = starredFolders.map((p) => (p === oldName ? newName : p));
 		await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
 		const json = JSON.stringify(starredFolders);
-		if (navigator.onLine && github) {
-			try {
-				const sha = starsSha
-					? await github.updateFile('_stars.json', json, starsSha)
-					: await github.createFile('_stars.json', json);
-				starsSha = sha;
-				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
-			} catch {
-				await queueOp({
-					action: starsSha ? 'update' : 'create',
-					path: '_stars.json',
-					content: json,
-					sha: starsSha ? starsSha : undefined,
-					queuedAt: now
-				});
-			}
-		} else {
-			await queueOp({
-				action: starsSha ? 'update' : 'create',
-				path: '_stars.json',
-				content: json,
-				sha: starsSha ? starsSha : undefined,
-				queuedAt: now
-			});
-		}
+		await writeStars(starredFolders, json, now);
 	}
 
 	// Sync to GitHub — each file is independent
@@ -420,31 +418,7 @@ export async function deleteFolder(name: string): Promise<void> {
 		starredFolders = starredFolders.filter((p) => p !== name);
 		await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
 		const json = JSON.stringify(starredFolders);
-		if (navigator.onLine && github) {
-			try {
-				const sha = starsSha
-					? await github.updateFile('_stars.json', json, starsSha)
-					: await github.createFile('_stars.json', json);
-				starsSha = sha;
-				await cache.saveStarredFolders({ paths: starredFolders, sha: starsSha });
-			} catch {
-				await queueOp({
-					action: starsSha ? 'update' : 'create',
-					path: '_stars.json',
-					content: json,
-					sha: starsSha ? starsSha : undefined,
-					queuedAt: now
-				});
-			}
-		} else {
-			await queueOp({
-				action: starsSha ? 'update' : 'create',
-				path: '_stars.json',
-				content: json,
-				sha: starsSha ? starsSha : undefined,
-				queuedAt: now
-			});
-		}
+		await writeStars(starredFolders, json, now);
 	}
 
 	// Sync to GitHub — each file is independent
