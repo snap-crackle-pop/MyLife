@@ -17,8 +17,6 @@
 	let {
 		folders,
 		selectedFolder,
-		// eslint-disable-next-line @typescript-eslint/no-unused-vars
-		notes = [],
 		isOpen = false,
 		theme = 'dark',
 		starredFolders = [],
