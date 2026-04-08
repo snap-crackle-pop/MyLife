@@ -1,5 +1,6 @@
 <script lang="ts">
 	import type { Note, Folder } from '$lib/types';
+	import { extractSnippet, countMatches } from '$lib/search';
 
 	interface Props {
 		folders: Folder[];
@@ -17,6 +18,7 @@
 	let {
 		folders,
 		selectedFolder,
+		notes = [],
 		isOpen = false,
 		theme = 'dark',
 		starredFolders = [],
@@ -31,6 +33,27 @@
 	let inputEl = $state<HTMLInputElement | null>(null);
 	let searchQuery = $state('');
 	let showStarredOnly = $state(false);
+	let searchMode = $state(false);
+
+	type SearchResult = {
+		folderPath: string;
+		snippet: { before: string; match: string; after: string };
+		matchCount: number;
+	};
+
+	let searchResults = $derived.by((): SearchResult[] => {
+		if (!searchMode || !searchQuery.trim()) return [];
+		const q = searchQuery.trim().toLowerCase();
+		return notes
+			.filter((n) => !n.path.endsWith('.gitkeep') && n.content.toLowerCase().includes(q))
+			.map((n) => ({
+				folderPath: n.path.split('/').slice(0, -1).join('/'),
+				snippet: extractSnippet(n.content, q),
+				matchCount: countMatches(n.content, q)
+			}));
+	});
+
+	let totalMatchCount = $derived(searchResults.reduce((sum, r) => sum + r.matchCount, 0));
 
 	let filteredFolders = $derived.by(() => {
 		// Step 1: apply star filter
@@ -86,7 +109,10 @@
 	}
 
 	$effect(() => {
-		if (!isOpen) searchQuery = '';
+		if (!isOpen) {
+			searchQuery = '';
+			searchMode = false;
+		}
 	});
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -116,65 +142,63 @@
 		<input
 			class="search-input"
 			type="search"
-			placeholder="Search folders…"
+			placeholder={searchMode ? 'Search notes…' : 'Search folders…'}
 			bind:value={searchQuery}
 			autocomplete="off"
 			spellcheck={false}
 		/>
+		{#if searchMode && searchQuery.trim()}
+			<p class="search-count">
+				{#if searchResults.length === 0}
+					No results
+				{:else}
+					{totalMatchCount}
+					{totalMatchCount === 1 ? 'match' : 'matches'} in {searchResults.length}
+					{searchResults.length === 1 ? 'note' : 'notes'}
+				{/if}
+			</p>
+		{/if}
 	</div>
 
 	<ul class="folder-list">
-		{#each filteredFolders as folder (folder.path)}
-			<li>
-				<button
-					class="folder-item"
-					data-folder={folder.path}
-					data-active={selectedFolder === folder.path}
-					onclick={() => onselectfolder?.(folder.path)}
-				>
-					<span class="folder-icon">
-						<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
-							<path
-								d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
-							/>
-						</svg>
-					</span>
-					<span class="folder-name">{folder.name}</span>
-					{#if starredFolders.includes(folder.path)}
-						<span class="folder-star" aria-hidden="true">
-							<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--warning)" stroke="none">
-								<polygon
-									points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
-								/>
-							</svg>
-						</span>
-					{/if}
-				</button>
-			</li>
-			{#each folder.children as child (child.path)}
+		{#if searchMode && searchQuery.trim()}
+			{#each searchResults as result (result.folderPath)}
 				<li>
 					<button
-						class="folder-item subfolder-item"
-						data-folder={child.path}
-						data-active={selectedFolder === child.path}
-						onclick={() => onselectfolder?.(child.path)}
+						class="result-item"
+						data-folder={result.folderPath}
+						onclick={() => {
+							onselectfolder?.(result.folderPath);
+							searchMode = false;
+							searchQuery = '';
+						}}
+					>
+						<span class="result-folder">{result.folderPath.split('/').pop()}</span>
+						<span class="result-snippet"
+							>{result.snippet.before}<span class="result-match">{result.snippet.match}</span
+							>{result.snippet.after}</span
+						>
+					</button>
+				</li>
+			{/each}
+		{:else}
+			{#each filteredFolders as folder (folder.path)}
+				<li>
+					<button
+						class="folder-item"
+						data-folder={folder.path}
+						data-active={selectedFolder === folder.path}
+						onclick={() => onselectfolder?.(folder.path)}
 					>
 						<span class="folder-icon">
-							<svg
-								width="16"
-								height="16"
-								viewBox="0 0 24 24"
-								fill="none"
-								stroke="currentColor"
-								stroke-width="2"
-							>
+							<svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor" stroke="none">
 								<path
 									d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
 								/>
 							</svg>
 						</span>
-						<span class="folder-name">{child.name}</span>
-						{#if starredFolders.includes(child.path)}
+						<span class="folder-name">{folder.name}</span>
+						{#if starredFolders.includes(folder.path)}
 							<span class="folder-star" aria-hidden="true">
 								<svg width="11" height="11" viewBox="0 0 24 24" fill="var(--warning)" stroke="none">
 									<polygon
@@ -185,36 +209,101 @@
 						{/if}
 					</button>
 				</li>
+				{#each folder.children as child (child.path)}
+					<li>
+						<button
+							class="folder-item subfolder-item"
+							data-folder={child.path}
+							data-active={selectedFolder === child.path}
+							onclick={() => onselectfolder?.(child.path)}
+						>
+							<span class="folder-icon">
+								<svg
+									width="16"
+									height="16"
+									viewBox="0 0 24 24"
+									fill="none"
+									stroke="currentColor"
+									stroke-width="2"
+								>
+									<path
+										d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+									/>
+								</svg>
+							</span>
+							<span class="folder-name">{child.name}</span>
+							{#if starredFolders.includes(child.path)}
+								<span class="folder-star" aria-hidden="true">
+									<svg
+										width="11"
+										height="11"
+										viewBox="0 0 24 24"
+										fill="var(--warning)"
+										stroke="none"
+									>
+										<polygon
+											points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"
+										/>
+									</svg>
+								</span>
+							{/if}
+						</button>
+					</li>
+				{/each}
 			{/each}
-		{/each}
 
-		{#if adding}
-			<li class="folder-add-row">
-				<span class="folder-icon">
-					<svg
-						width="16"
-						height="16"
-						viewBox="0 0 24 24"
-						fill="none"
-						stroke="currentColor"
-						stroke-width="2"
-					>
-						<path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z" />
-					</svg>
-				</span>
-				<input
-					bind:this={inputEl}
-					class="folder-name-input"
-					placeholder="folder name"
-					bind:value={newFolderName}
-					onkeydown={handleKeyDown}
-					onblur={cancelAdd}
-				/>
-			</li>
+			{#if adding}
+				<li class="folder-add-row">
+					<span class="folder-icon">
+						<svg
+							width="16"
+							height="16"
+							viewBox="0 0 24 24"
+							fill="none"
+							stroke="currentColor"
+							stroke-width="2"
+						>
+							<path
+								d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+							/>
+						</svg>
+					</span>
+					<input
+						bind:this={inputEl}
+						class="folder-name-input"
+						placeholder="folder name"
+						bind:value={newFolderName}
+						onkeydown={handleKeyDown}
+						onblur={cancelAdd}
+					/>
+				</li>
+			{/if}
 		{/if}
 	</ul>
 
 	<div class="sidebar-actions">
+		<button
+			class="action-btn"
+			onclick={() => {
+				searchMode = !searchMode;
+				if (!searchMode) searchQuery = '';
+			}}
+			aria-pressed={searchMode}
+			aria-label="Search notes"
+			title="Search notes"
+		>
+			<svg
+				width="16"
+				height="16"
+				viewBox="0 0 24 24"
+				fill="none"
+				stroke={searchMode ? 'var(--accent)' : 'currentColor'}
+				stroke-width="2"
+			>
+				<circle cx="11" cy="11" r="8" />
+				<line x1="21" y1="21" x2="16.65" y2="16.65" />
+			</svg>
+		</button>
 		<button class="action-btn" onclick={startAdding} aria-label="New folder" title="New folder">
 			<svg
 				width="16"
@@ -442,6 +531,51 @@
 
 	.search-input:focus {
 		border-color: var(--accent);
+	}
+
+	.search-count {
+		font-size: 11px;
+		color: var(--text-muted);
+		padding: 2px 4px 0;
+		margin: 0;
+	}
+
+	.result-item {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		width: 100%;
+		padding: 6px 16px;
+		text-align: left;
+		border-radius: 0;
+		color: var(--text-secondary);
+		transition: background 0.1s;
+	}
+
+	.result-item:hover {
+		background: var(--bg-surface);
+		color: var(--text-primary);
+	}
+
+	.result-folder {
+		font-size: 12px;
+		font-weight: 600;
+		color: var(--text-primary);
+	}
+
+	.result-snippet {
+		font-size: 11px;
+		color: var(--text-muted);
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		display: block;
+	}
+
+	.result-match {
+		background: color-mix(in srgb, var(--warning) 35%, transparent);
+		border-radius: 2px;
+		color: var(--text-primary);
 	}
 
 	.close-btn {
