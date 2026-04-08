@@ -34,6 +34,7 @@
 	let searchQuery = $state('');
 	let showStarredOnly = $state(false);
 	let searchMode = $state(false);
+	let selectedSearchFolder = $state<string | null>(null);
 
 	type SearchResult = {
 		folderPath: string;
@@ -123,8 +124,30 @@
 		if (!isOpen) {
 			searchQuery = '';
 			searchMode = false;
+			selectedSearchFolder = null;
 		}
 	});
+
+	$effect(() => {
+		if (!searchMode) return;
+		function onEsc(e: KeyboardEvent) {
+			if (e.key === 'Escape') clearSearch();
+		}
+		document.addEventListener('keydown', onEsc);
+		return () => document.removeEventListener('keydown', onEsc);
+	});
+
+	$effect(() => {
+		// Reset active result when query changes
+		void searchQuery;
+		selectedSearchFolder = null;
+	});
+
+	function clearSearch() {
+		searchMode = false;
+		searchQuery = '';
+		selectedSearchFolder = null;
+	}
 
 	function handleKeyDown(e: KeyboardEvent) {
 		if (e.key === 'Enter') confirmAdd();
@@ -157,14 +180,17 @@
 			bind:value={searchQuery}
 			autocomplete="off"
 			spellcheck={false}
+			onkeydown={(e) => {
+				if (e.key === 'Escape') clearSearch();
+			}}
 		/>
 		{#if searchMode && searchQuery.trim()}
 			<p class="search-count">
 				{#if searchResults.length === 0}
 					No results
 				{:else}
-					{totalMatchCount}
-					{totalMatchCount === 1 ? 'match' : 'matches'} in {searchResults.length}
+					<strong>{totalMatchCount}</strong>
+					{totalMatchCount === 1 ? 'match' : 'matches'} in <strong>{searchResults.length}</strong>
 					{searchResults.length === 1 ? 'note' : 'notes'}
 				{/if}
 			</p>
@@ -178,10 +204,10 @@
 					<button
 						class="result-item"
 						data-folder={result.folderPath}
+						data-active={selectedSearchFolder === result.folderPath}
 						onclick={() => {
+							selectedSearchFolder = result.folderPath;
 							onselectfolder?.(result.folderPath);
-							searchMode = false;
-							searchQuery = '';
 						}}
 					>
 						<span class="result-folder">{result.folderPath.split('/').pop()}</span>
@@ -296,8 +322,11 @@
 		<button
 			class="action-btn"
 			onclick={() => {
-				searchMode = !searchMode;
-				if (!searchMode) searchQuery = '';
+				if (searchMode) {
+					clearSearch();
+				} else {
+					searchMode = true;
+				}
 			}}
 			aria-pressed={searchMode}
 			aria-label="Search notes"
@@ -549,6 +578,11 @@
 		color: var(--text-muted);
 		padding: 2px 4px 0;
 		margin: 0;
+		text-align: right;
+	}
+
+	.search-count strong {
+		color: var(--warning);
 	}
 
 	.result-item {
@@ -566,6 +600,12 @@
 	.result-item:hover {
 		background: var(--bg-surface);
 		color: var(--text-primary);
+	}
+
+	.result-item[data-active='true'] {
+		background: var(--bg-surface);
+		color: var(--text-primary);
+		border-right: 2px solid var(--accent);
 	}
 
 	.result-folder {

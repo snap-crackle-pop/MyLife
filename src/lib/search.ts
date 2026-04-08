@@ -11,12 +11,14 @@ export function extractSnippet(
 	}
 
 	const matchStr = content.slice(idx, idx + query.length);
-	const beforeStart = Math.max(0, idx - 60);
-	const afterEnd = Math.min(content.length, idx + query.length + 60);
+	const beforeStart = Math.max(0, idx - 20);
+	const afterEnd = Math.min(content.length, idx + query.length + 80);
 
-	const before = (beforeStart > 0 ? '…' : '') + content.slice(beforeStart, idx);
+	const before =
+		(beforeStart > 0 ? '…' : '') + content.slice(beforeStart, idx).replace(/\s+/g, ' ');
 	const after =
-		content.slice(idx + query.length, afterEnd) + (afterEnd < content.length ? '…' : '');
+		content.slice(idx + query.length, afterEnd).replace(/\s+/g, ' ') +
+		(afterEnd < content.length ? '…' : '');
 
 	return { before, match: matchStr, after };
 }

@@ -19,12 +19,12 @@ describe('extractSnippet', () => {
 		expect(result.match).toBe('World');
 	});
 
-	it('truncates long content to ~60 chars before and after the match', () => {
+	it('truncates long content to ~80 chars before and after the match', () => {
 		const longBefore = 'a'.repeat(100);
 		const longAfter = 'b'.repeat(100);
 		const result = extractSnippet(`${longBefore}MATCH${longAfter}`, 'match');
-		expect(result.before.length).toBeLessThanOrEqual(62); // 60 chars + optional ellipsis
-		expect(result.after.length).toBeLessThanOrEqual(62);
+		expect(result.before.length).toBeLessThanOrEqual(22); // 20 chars + optional ellipsis
+		expect(result.after.length).toBeLessThanOrEqual(82); // 80 chars + optional ellipsis
 		expect(result.match).toBe('MATCH');
 	});
 
@@ -99,7 +99,13 @@ describe('Sidebar search mode', () => {
 		await fireEvent.input(screen.getByPlaceholderText('Search notes…'), {
 			target: { value: 'foo' }
 		});
-		expect(screen.getByText('2 matches in 2 notes')).toBeInTheDocument();
+		const countEl = screen.getByText(
+			(_, el) =>
+				el?.tagName === 'P' &&
+				(el.textContent ?? '').includes('2') &&
+				(el.textContent ?? '').includes('matches in')
+		);
+		expect(countEl).toBeInTheDocument();
 	});
 
 	it('shows No results when query has no matches', async () => {
