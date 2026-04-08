@@ -141,4 +141,19 @@ describe('Sidebar search mode', () => {
 		await fireEvent.click(searchBtn);
 		expect(screen.getByPlaceholderText('Search folders…')).toBeInTheDocument();
 	});
+
+	it('shows each folder only once even if multiple notes match', async () => {
+		const multiNotes: Note[] = [
+			createTestNote({ path: 'journal/index.md', content: 'foo bar' }),
+			createTestNote({ path: 'journal/entry.md', content: 'foo baz' }),
+			createTestNote({ path: 'work/index.md', content: 'no match here' })
+		];
+		render(Sidebar, { folders: [], selectedFolder: null, notes: multiNotes });
+		await fireEvent.click(screen.getByRole('button', { name: 'Search notes' }));
+		await fireEvent.input(screen.getByPlaceholderText('Search notes…'), {
+			target: { value: 'foo' }
+		});
+		const journalResults = document.querySelectorAll('[data-folder="journal"]');
+		expect(journalResults.length).toBe(1);
+	});
 });

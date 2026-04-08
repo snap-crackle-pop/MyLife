@@ -43,14 +43,25 @@
 
 	let searchResults = $derived.by((): SearchResult[] => {
 		if (!searchMode || !searchQuery.trim()) return [];
-		const q = searchQuery.trim().toLowerCase();
-		return notes
+		const rawQuery = searchQuery.trim();
+		const q = rawQuery.toLowerCase();
+		const mapped = notes
 			.filter((n) => !n.path.endsWith('.gitkeep') && n.content.toLowerCase().includes(q))
 			.map((n) => ({
 				folderPath: n.path.split('/').slice(0, -1).join('/'),
-				snippet: extractSnippet(n.content, q),
+				snippet: extractSnippet(n.content, rawQuery),
 				matchCount: countMatches(n.content, q)
 			}));
+
+		// One result per folder — keep the note with the most matches
+		const seen = new Map<string, SearchResult>();
+		for (const r of mapped) {
+			const existing = seen.get(r.folderPath);
+			if (!existing || r.matchCount > existing.matchCount) {
+				seen.set(r.folderPath, r);
+			}
+		}
+		return Array.from(seen.values());
 	});
 
 	let totalMatchCount = $derived(searchResults.reduce((sum, r) => sum + r.matchCount, 0));
