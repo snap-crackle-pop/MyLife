@@ -100,17 +100,11 @@ test.describe('Note content search', () => {
 	test('clicking search button activates content search mode', async ({ page }) => {
 		await setupApp(page, [{ path: 'inbox/index.md', content: '', sha: 'sha-1' }]);
 
-		await expect(page.locator('.search-input')).toHaveAttribute(
-			'placeholder',
-			'Search folders…'
-		);
+		await expect(page.locator('.search-input')).toHaveAttribute('placeholder', 'Search folders…');
 
 		await page.getByRole('button', { name: 'Search notes' }).click();
 
-		await expect(page.locator('.search-input')).toHaveAttribute(
-			'placeholder',
-			'Search notes…'
-		);
+		await expect(page.locator('.search-input')).toHaveAttribute('placeholder', 'Search notes…');
 	});
 
 	test('content search shows folders whose notes match the query', async ({ page }) => {
@@ -127,9 +121,7 @@ test.describe('Note content search', () => {
 	});
 
 	test('content search shows a snippet of the matching text', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'inbox/index.md', content: 'buy milk and eggs', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: 'buy milk and eggs', sha: 'sha-1' }]);
 
 		await page.getByRole('button', { name: 'Search notes' }).click();
 		await page.locator('.search-input').fill('milk');
@@ -138,9 +130,7 @@ test.describe('Note content search', () => {
 	});
 
 	test('content search shows total match count', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'inbox/index.md', content: 'milk milk milk', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: 'milk milk milk', sha: 'sha-1' }]);
 
 		await page.getByRole('button', { name: 'Search notes' }).click();
 		await page.locator('.search-input').fill('milk');
@@ -149,9 +139,7 @@ test.describe('Note content search', () => {
 	});
 
 	test('content search with no matches shows no results message', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'inbox/index.md', content: 'buy milk and eggs', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'inbox/index.md', content: 'buy milk and eggs', sha: 'sha-1' }]);
 
 		await page.getByRole('button', { name: 'Search notes' }).click();
 		await page.locator('.search-input').fill('unicorn');
@@ -181,10 +169,7 @@ test.describe('Note content search', () => {
 
 		await page.locator('.search-input').press('Escape');
 
-		await expect(page.locator('.search-input')).toHaveAttribute(
-			'placeholder',
-			'Search folders…'
-		);
+		await expect(page.locator('.search-input')).toHaveAttribute('placeholder', 'Search folders…');
 	});
 
 	test('clicking search button again exits content search mode', async ({ page }) => {
@@ -195,9 +180,6 @@ test.describe('Note content search', () => {
 
 		await page.getByRole('button', { name: 'Search notes' }).click();
 
-		await expect(page.locator('.search-input')).toHaveAttribute(
-			'placeholder',
-			'Search folders…'
-		);
+		await expect(page.locator('.search-input')).toHaveAttribute('placeholder', 'Search folders…');
 	});
 });

@@ -67,9 +67,7 @@ async function setupApp(page: Page, files: MockFile[] = []) {
 
 test.describe('Note editing', () => {
 	test('existing note content loads into the editor', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'journal/index.md', content: 'Hello world', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'journal/index.md', content: 'Hello world', sha: 'sha-1' }]);
 
 		await page.locator('[data-folder="journal"]').click();
 
@@ -77,9 +75,7 @@ test.describe('Note editing', () => {
 	});
 
 	test('typing in the editor sends a PUT request to GitHub', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'ideas/index.md', content: 'original', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'ideas/index.md', content: 'original', sha: 'sha-1' }]);
 
 		await page.locator('[data-folder="ideas"]').click();
 		await expect(page.locator('.note-editor')).toHaveValue('original');
@@ -97,9 +93,7 @@ test.describe('Note editing', () => {
 	});
 
 	test('textarea reflects typed content immediately', async ({ page }) => {
-		await setupApp(page, [
-			{ path: 'work/index.md', content: '', sha: 'sha-1' }
-		]);
+		await setupApp(page, [{ path: 'work/index.md', content: '', sha: 'sha-1' }]);
 
 		await page.locator('[data-folder="work"]').click();
 		await page.locator('.note-editor').fill('my new note');
