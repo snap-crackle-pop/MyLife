@@ -42,6 +42,42 @@ describe('theme store', () => {
 	});
 });
 
+// ── Sidebar open/collapsed state ──────────────────────────────────────────────
+
+describe('sidebar open/collapsed state', () => {
+	beforeEach(async () => {
+		localStorage.clear();
+		vi.resetModules();
+		ui = await import('$lib/stores/ui.svelte');
+	});
+
+	it('getSidebarOpen defaults to false', () => {
+		expect(ui.getSidebarOpen()).toBe(false);
+	});
+
+	it('setSidebarOpen(true) opens sidebar', () => {
+		ui.setSidebarOpen(true);
+		expect(ui.getSidebarOpen()).toBe(true);
+	});
+
+	it('setSidebarOpen(false) closes sidebar', () => {
+		ui.setSidebarOpen(true);
+		ui.setSidebarOpen(false);
+		expect(ui.getSidebarOpen()).toBe(false);
+	});
+
+	it('getSidebarCollapsed defaults to false', () => {
+		expect(ui.getSidebarCollapsed()).toBe(false);
+	});
+
+	it('toggleSidebarCollapsed flips collapsed state', () => {
+		ui.toggleSidebarCollapsed();
+		expect(ui.getSidebarCollapsed()).toBe(true);
+		ui.toggleSidebarCollapsed();
+		expect(ui.getSidebarCollapsed()).toBe(false);
+	});
+});
+
 // ── Sidebar toggle button ─────────────────────────────────────────────────────
 
 describe('Sidebar theme toggle', () => {

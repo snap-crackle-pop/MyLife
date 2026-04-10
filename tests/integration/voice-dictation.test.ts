@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
+import { tick } from 'svelte';
 import FolderPanel from '$lib/components/FolderPanel.svelte';
 import { createTestNote } from '../factories';
 
@@ -125,6 +126,54 @@ describe('voice dictation toolbar', () => {
 		} as unknown as SpeechRecognitionEvent);
 
 		expect(onsave).toHaveBeenCalledWith('first words');
+	});
+
+	it('shows interim transcript in the textarea while speaking', async () => {
+		renderPanel('existing content');
+		await fireEvent.focus(getTextarea());
+		await fireEvent.pointerDown(screen.getByRole('button', { name: 'Dictate' }));
+
+		// Simulate a non-final (interim) result
+		capturedInstance!.onresult?.({
+			results: { 0: { 0: { transcript: 'hello...' }, isFinal: false } }
+		} as unknown as SpeechRecognitionEvent);
+		await tick();
+
+		// The textarea value should reflect dictationBase + interim preview
+		expect(getTextarea().value).toBe('existing content hello...');
+	});
+
+	it('stops listening after onerror fires', async () => {
+		renderPanel();
+		await fireEvent.focus(getTextarea());
+		await fireEvent.pointerDown(screen.getByRole('button', { name: 'Dictate' }));
+
+		// Verify button shows pressed state before error
+		expect(screen.getByRole('button', { name: 'Dictate' })).toHaveAttribute('aria-pressed', 'true');
+
+		capturedInstance!.onerror?.();
+		await tick();
+
+		expect(screen.getByRole('button', { name: 'Dictate' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
+	});
+
+	it('stops listening after onend fires', async () => {
+		renderPanel();
+		await fireEvent.focus(getTextarea());
+		await fireEvent.pointerDown(screen.getByRole('button', { name: 'Dictate' }));
+
+		expect(screen.getByRole('button', { name: 'Dictate' })).toHaveAttribute('aria-pressed', 'true');
+
+		capturedInstance!.onend?.();
+		await tick();
+
+		expect(screen.getByRole('button', { name: 'Dictate' })).toHaveAttribute(
+			'aria-pressed',
+			'false'
+		);
 	});
 
 	it('mic button not shown when SpeechRecognition is unsupported', async () => {

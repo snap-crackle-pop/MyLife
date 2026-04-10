@@ -120,6 +120,40 @@ describe('SyncEngine', () => {
 			expect(queue[0].path).toBe('inbox/fail.md');
 		});
 
+		it('processes queued update operations', async () => {
+			await cache.saveSyncQueue([
+				createTestSyncItem({
+					action: 'update',
+					path: 'inbox/note.md',
+					content: 'updated',
+					sha: 'old-sha'
+				})
+			]);
+			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } }));
+
+			await sync.pushOfflineQueue();
+
+			const [url, opts] = mockFetch.mock.calls[0];
+			expect(url).toContain('/contents/inbox/note.md');
+			expect(opts.method).toBe('PUT');
+			expect(JSON.parse(opts.body).sha).toBe('old-sha');
+			expect(await cache.getSyncQueue()).toEqual([]);
+		});
+
+		it('processes queued delete operations', async () => {
+			await cache.saveSyncQueue([
+				createTestSyncItem({ action: 'delete', path: 'inbox/gone.md', sha: 'del-sha' })
+			]);
+			mockFetch.mockResolvedValueOnce(githubResponse({}));
+
+			await sync.pushOfflineQueue();
+
+			const [url, opts] = mockFetch.mock.calls[0];
+			expect(url).toContain('/contents/inbox/gone.md');
+			expect(opts.method).toBe('DELETE');
+			expect(await cache.getSyncQueue()).toEqual([]);
+		});
+
 		it('does nothing when queue is empty', async () => {
 			await sync.pushOfflineQueue();
 			expect(mockFetch).not.toHaveBeenCalled();

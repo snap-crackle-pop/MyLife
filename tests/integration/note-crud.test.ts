@@ -232,3 +232,65 @@ describe('getNotesInFolder', () => {
 		expect(notes.some((n) => n.path.endsWith('.gitkeep'))).toBe(false);
 	});
 });
+
+// ── togglePin / getPinnedNotes ────────────────────────────────────────────────
+
+describe('togglePin', () => {
+	it('pins an unpinned note', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
+		const note = await store.createNote('inbox', 'Pin Me', 'text');
+
+		await store.togglePin(note.path);
+
+		expect(store.getNotes().find((n) => n.path === note.path)?.pinned).toBe(true);
+	});
+
+	it('unpins an already pinned note', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
+		const note = await store.createNote('inbox', 'Toggle Pin', 'text');
+
+		await store.togglePin(note.path);
+		await store.togglePin(note.path);
+
+		expect(store.getNotes().find((n) => n.path === note.path)?.pinned).toBe(false);
+	});
+
+	it('persists pin state to cache', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
+		const note = await store.createNote('inbox', 'Cache Pin', 'text');
+
+		await store.togglePin(note.path);
+
+		const cached = await testCache.getNote(note.path);
+		expect(cached?.pinned).toBe(true);
+	});
+
+	it('does nothing when note path is not found', async () => {
+		const before = store.getNotes().length;
+		await store.togglePin('inbox/nonexistent.md');
+		expect(store.getNotes().length).toBe(before);
+	});
+});
+
+describe('getPinnedNotes', () => {
+	it('returns only pinned notes', async () => {
+		mockFetch
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
+			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
+
+		const pinned = await store.createNote('inbox', 'Pinned', 'text');
+		await store.createNote('inbox', 'Not Pinned', 'text');
+		await store.togglePin(pinned.path);
+
+		const result = store.getPinnedNotes();
+		expect(result).toHaveLength(1);
+		expect(result[0].path).toBe(pinned.path);
+	});
+
+	it('returns empty array when nothing is pinned', async () => {
+		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
+		await store.createNote('inbox', 'Unpinned', 'text');
+
+		expect(store.getPinnedNotes()).toEqual([]);
+	});
+});
