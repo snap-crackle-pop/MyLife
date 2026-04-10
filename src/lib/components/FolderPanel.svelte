@@ -104,12 +104,16 @@
 		if (!highlight || !note || !textareaEl) return;
 		const lower = note.content.toLowerCase();
 		const idx = lower.indexOf(highlight.toLowerCase());
-		if (idx === -1) return;
+		if (idx === -1) {
+			setSearchHighlight('');
+			return;
+		}
 		textareaEl.focus();
 		textareaEl.setSelectionRange(idx, idx + highlight.length);
 		const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 20;
 		const linesBefore = note.content.slice(0, idx).split('\n').length - 1;
 		textareaEl.scrollTop = Math.max(0, linesBefore * lineHeight - textareaEl.clientHeight / 2);
+		setSearchHighlight('');
 	});
 
 	const recognition = useSpeechRecognition((text: string) => {

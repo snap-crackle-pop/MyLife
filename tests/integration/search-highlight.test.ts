@@ -4,7 +4,7 @@ import { tick } from 'svelte';
 import type { Note } from '$lib/types';
 import { createTestNote } from '../factories';
 import Sidebar from '$lib/components/Sidebar.svelte';
-import FolderPanelStatic from '$lib/components/FolderPanel.svelte';
+import FolderPanel from '$lib/components/FolderPanel.svelte';
 import { setSearchHighlight, getSearchHighlight } from '$lib/stores/ui.svelte';
 // ── Module reset helpers ───────────────────────────────────────────────────────
 // ui.svelte.ts uses module-level $state; vi.resetModules() gives fresh state.
@@ -44,7 +44,6 @@ const searchNotes: Note[] = [
 
 describe('Sidebar sets searchHighlight on result click', () => {
 	beforeEach(() => {
-		// Clear searchHighlight state before each test (don't reset modules to avoid Svelte effect issues)
 		setSearchHighlight('');
 	});
 
@@ -76,7 +75,7 @@ describe('Sidebar sets searchHighlight on result click', () => {
 
 function renderPanel(content: string) {
 	const note = createTestNote({ content });
-	render(FolderPanelStatic, {
+	render(FolderPanel, {
 		props: { folder: 'inbox', note, renaming: false, renameName: '', confirming: false }
 	});
 	return note;
@@ -88,7 +87,6 @@ function getTextarea() {
 
 describe('FolderPanel search highlight', () => {
 	beforeEach(() => {
-		// Clear searchHighlight before each test; static imports share same module instance
 		setSearchHighlight('');
 	});
 
