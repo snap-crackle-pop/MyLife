@@ -1,7 +1,7 @@
 <script lang="ts">
 	import type { Note, Folder } from '$lib/types';
 	import { extractSnippet, countMatches } from '$lib/search';
-	import { setSearchHighlight } from '$lib/stores/ui.svelte';
+	import { setSearchHighlight, clearSearchHighlight } from '$lib/stores/ui.svelte';
 
 	interface Props {
 		folders: Folder[];
@@ -148,7 +148,7 @@
 		searchMode = false;
 		searchQuery = '';
 		selectedSearchFolder = null;
-		setSearchHighlight('');
+		clearSearchHighlight();
 	}
 
 	function handleKeyDown(e: KeyboardEvent) {
@@ -208,7 +208,7 @@
 						data-folder={result.folderPath}
 						data-active={selectedSearchFolder === result.folderPath}
 						onclick={() => {
-							setSearchHighlight(searchQuery.trim());
+							setSearchHighlight(searchQuery.trim(), result.folderPath);
 							selectedSearchFolder = result.folderPath;
 							onselectfolder?.(result.folderPath);
 						}}

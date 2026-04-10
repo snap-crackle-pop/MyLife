@@ -1,7 +1,7 @@
 let sidebarOpen = $state(false);
 let sidebarCollapsed = $state(false);
 let theme = $state<'dark' | 'light'>((localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark');
-let searchHighlight = $state('');
+let searchHighlight = $state<{ query: string; folder: string } | null>(null);
 
 export function getSidebarOpen() {
 	return sidebarOpen;
@@ -32,6 +32,10 @@ export function getSearchHighlight() {
 	return searchHighlight;
 }
 
-export function setSearchHighlight(query: string) {
-	searchHighlight = query;
+export function setSearchHighlight(query: string, folder: string) {
+	searchHighlight = { query, folder };
+}
+
+export function clearSearchHighlight() {
+	searchHighlight = null;
 }
