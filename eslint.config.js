@@ -81,6 +81,6 @@ export default [
 		}
 	},
 	{
-		ignores: ['build/', '.svelte-kit/', 'node_modules/', 'coverage/']
+		ignores: ['build/', '.svelte-kit/', 'node_modules/', 'coverage/', 'public/mockServiceWorker.js']
 	}
 ];
