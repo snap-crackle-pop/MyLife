@@ -126,6 +126,7 @@
 			searchQuery = '';
 			searchMode = false;
 			selectedSearchFolder = null;
+			setSearchHighlight('');
 		}
 	});
 
