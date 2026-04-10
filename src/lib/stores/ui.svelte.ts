@@ -1,6 +1,7 @@
 let sidebarOpen = $state(false);
 let sidebarCollapsed = $state(false);
 let theme = $state<'dark' | 'light'>((localStorage.getItem('theme') as 'dark' | 'light') ?? 'dark');
+let searchHighlight = $state('');
 
 export function getSidebarOpen() {
 	return sidebarOpen;
@@ -26,8 +27,6 @@ export function toggleTheme() {
 	theme = theme === 'dark' ? 'light' : 'dark';
 	localStorage.setItem('theme', theme);
 }
-
-let searchHighlight = $state('');
 
 export function getSearchHighlight() {
 	return searchHighlight;
