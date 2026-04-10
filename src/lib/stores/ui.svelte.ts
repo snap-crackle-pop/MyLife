@@ -26,3 +26,13 @@ export function toggleTheme() {
 	theme = theme === 'dark' ? 'light' : 'dark';
 	localStorage.setItem('theme', theme);
 }
+
+let searchHighlight = $state('');
+
+export function getSearchHighlight() {
+	return searchHighlight;
+}
+
+export function setSearchHighlight(query: string) {
+	searchHighlight = query;
+}
