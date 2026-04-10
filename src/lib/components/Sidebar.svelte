@@ -627,9 +627,7 @@
 	}
 
 	.result-match {
-		background: color-mix(in srgb, var(--warning) 35%, transparent);
-		border-radius: 2px;
-		color: var(--text-primary);
+		color: var(--search-highlight-bg);
 	}
 
 	.close-btn {

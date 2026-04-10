@@ -608,6 +608,11 @@
 		color: var(--text-muted);
 	}
 
+	.note-editor::selection {
+		background: transparent;
+		color: var(--search-highlight-bg);
+	}
+
 	@media (max-width: 768px) {
 		.panel-header {
 			display: none;
