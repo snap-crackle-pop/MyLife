@@ -6,8 +6,17 @@ import { createTestNote } from '../factories';
 import Sidebar from '$lib/components/Sidebar.svelte';
 import FolderPanel from '$lib/components/FolderPanel.svelte';
 import { setSearchHighlight, getSearchHighlight } from '$lib/stores/ui.svelte';
-// ── Module reset helpers ───────────────────────────────────────────────────────
-// ui.svelte.ts uses module-level $state; vi.resetModules() gives fresh state.
+// ── Test isolation notes ──────────────────────────────────────────────────────
+//
+// Task 1 (pure store tests) uses vi.resetModules() in its own beforeEach to get
+// a fresh $state cell per test. No Svelte components are rendered there, so
+// vi.resetModules() is safe.
+//
+// Tasks 2 and 3 render Svelte components (Sidebar, FolderPanel). Using
+// vi.resetModules() alongside component rendering causes Svelte to throw
+// effect_orphan errors (the Svelte runtime module is also reset, breaking
+// $effect initialization). Instead, those tests reset state by calling
+// setSearchHighlight('') in their beforeEach.
 
 type UiModule = typeof import('$lib/stores/ui.svelte');
 
