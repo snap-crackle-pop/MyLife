@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Note } from '$lib/types';
 	import { useSpeechRecognition } from '$lib/speech.svelte';
+	import { getSearchHighlight, setSearchHighlight } from '$lib/stores/ui.svelte';
 
 	interface Props {
 		folder: string;
@@ -97,6 +98,19 @@
 
 	let dictationBase = $state('');
 	let textareaEl = $state<HTMLTextAreaElement | null>(null);
+
+	$effect(() => {
+		const highlight = getSearchHighlight();
+		if (!highlight || !note || !textareaEl) return;
+		const lower = note.content.toLowerCase();
+		const idx = lower.indexOf(highlight.toLowerCase());
+		if (idx === -1) return;
+		textareaEl.focus();
+		textareaEl.setSelectionRange(idx, idx + highlight.length);
+		const lineHeight = parseFloat(getComputedStyle(textareaEl).lineHeight) || 20;
+		const linesBefore = note.content.slice(0, idx).split('\n').length - 1;
+		textareaEl.scrollTop = Math.max(0, linesBefore * lineHeight - textareaEl.clientHeight / 2);
+	});
 
 	const recognition = useSpeechRecognition((text: string) => {
 		const newContent = dictationBase ? `${dictationBase} ${text}` : text;
@@ -358,7 +372,13 @@
 					? `${dictationBase} ${recognition.interim}`
 					: recognition.interim
 				: (note?.content ?? '')}
-			oninput={handleInput}
+			oninput={(e) => {
+				if (getSearchHighlight()) setSearchHighlight('');
+				handleInput(e);
+			}}
+			onkeydown={(e) => {
+				if (e.key === 'Escape' && getSearchHighlight()) setSearchHighlight('');
+			}}
 			placeholder="Start writing..."
 			bind:this={textareaEl}
 		></textarea>
