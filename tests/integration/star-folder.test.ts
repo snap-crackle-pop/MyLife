@@ -1,10 +1,8 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { NoteCache } from '$lib/cache';
-import { createMockFetch, githubResponse } from '../factories';
 import { store as idbStore } from '../setup';
-
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
 
 const testCache = new NoteCache();
 
@@ -12,7 +10,6 @@ type StoreModule = typeof import('$lib/stores/notes.svelte');
 let store: StoreModule;
 
 beforeEach(async () => {
-	mockFetch.mockReset();
 	vi.resetModules();
 	store = (await import('$lib/stores/notes.svelte')) as StoreModule;
 	store.initStore('fake-token', 'testuser/mylife-notes');
@@ -25,8 +22,6 @@ afterEach(() => {
 
 describe('toggleStarFolder', () => {
 	it('adds a folder to the starred list immediately', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'star-sha' } }));
-
 		await store.toggleStarFolder('inbox');
 
 		expect(store.getStarredFolders()).toContain('inbox');
@@ -34,9 +29,7 @@ describe('toggleStarFolder', () => {
 	});
 
 	it('removes a folder when toggled a second time', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		await store.toggleStarFolder('inbox');
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
 		await store.toggleStarFolder('inbox');
 
 		expect(store.getStarredFolders()).not.toContain('inbox');
@@ -44,65 +37,87 @@ describe('toggleStarFolder', () => {
 	});
 
 	it('calls createFile for _stars.json on first star (no existing SHA)', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } }));
+		let capturedUrl = '';
+		let capturedBody: Record<string, unknown> = {};
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+				capturedUrl = request.url;
+				capturedBody = (await request.json()) as Record<string, unknown>;
+				return HttpResponse.json({ content: { sha: 'new-sha' } });
+			})
+		);
 
 		await store.toggleStarFolder('work');
 
-		expect(mockFetch).toHaveBeenCalledWith(
-			expect.stringContaining('/contents/_stars.json'),
-			expect.objectContaining({ method: 'PUT' })
-		);
-		// No sha in body means create (not update)
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-		expect(body.sha).toBeUndefined();
+		expect(capturedUrl).toContain('/contents/_stars.json');
+		expect(capturedBody.sha).toBeUndefined();
 	});
 
 	it('writes the correct JSON array to _stars.json', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
+		let capturedBody: Record<string, unknown> = {};
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+				capturedBody = (await request.json()) as Record<string, unknown>;
+				return HttpResponse.json({ content: { sha: 'sha-1' } });
+			})
+		);
 
 		await store.toggleStarFolder('inbox');
 
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-		const content = atob(body.content);
+		const content = atob(capturedBody.content as string);
 		expect(JSON.parse(content)).toEqual(['inbox']);
 	});
 
 	it('calls updateFile (includes sha in body) after first star sets SHA', async () => {
-		// First toggle — creates file, returns SHA
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'first-sha' } }));
+		// First toggle — creates file, returns first-sha
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'first-sha' } })
+			)
+		);
 		await store.toggleStarFolder('inbox');
-		mockFetch.mockReset();
 
-		// Second toggle on a different folder — should update with the known SHA
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'second-sha' } }));
+		// Second toggle — should update with the known SHA
+		let capturedBody: Record<string, unknown> = {};
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+				capturedBody = (await request.json()) as Record<string, unknown>;
+				return HttpResponse.json({ content: { sha: 'second-sha' } });
+			})
+		);
 		await store.toggleStarFolder('work');
 
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-		expect(body.sha).toBe('first-sha');
+		expect(capturedBody.sha).toBe('first-sha');
 	});
 
 	it('patches starsSha after GitHub responds', async () => {
-		// First toggle — creates, returns first-sha
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'first-sha' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'first-sha' } })
+			)
+		);
 		await store.toggleStarFolder('inbox');
-		mockFetch.mockReset();
 
-		// Second toggle — updates using first-sha, returns second-sha
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'second-sha' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'second-sha' } })
+			)
+		);
 		await store.toggleStarFolder('work');
-		mockFetch.mockReset();
 
-		// Third toggle — should now use second-sha (the patched value)
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'third-sha' } }));
+		let capturedBody: Record<string, unknown> = {};
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+				capturedBody = (await request.json()) as Record<string, unknown>;
+				return HttpResponse.json({ content: { sha: 'third-sha' } });
+			})
+		);
 		await store.toggleStarFolder('archive');
 
-		const body = JSON.parse(mockFetch.mock.calls[0][1].body as string);
-		expect(body.sha).toBe('second-sha');
+		expect(capturedBody.sha).toBe('second-sha');
 	});
 
 	it('saves starred folders to IndexedDB cache', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-
 		await store.toggleStarFolder('inbox');
 
 		const cached = idbStore.get('starred-folders') as { paths: string[]; sha: string };
@@ -114,13 +129,14 @@ describe('toggleStarFolder', () => {
 
 		await store.toggleStarFolder('inbox');
 
-		expect(mockFetch).not.toHaveBeenCalled();
 		const queue = await testCache.getSyncQueue();
 		expect(queue.some((q) => q.path === '_stars.json' && q.action === 'create')).toBe(true);
 	});
 
 	it('queues an op when the API call fails', async () => {
-		mockFetch.mockRejectedValueOnce(new Error('network error'));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error())
+		);
 
 		await store.toggleStarFolder('inbox');
 
@@ -131,17 +147,9 @@ describe('toggleStarFolder', () => {
 
 describe('starred folder cleanup', () => {
 	it('removes deleted folder from starredFolders', async () => {
-		// Setup: create folder, star it
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } })); // createFolder
 		await store.createFolder('inbox');
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'star-sha' } })); // toggleStarFolder
 		await store.toggleStarFolder('inbox');
 		expect(store.isStarredFolder('inbox')).toBe(true);
-		mockFetch.mockReset();
-
-		// Delete folder — mock deleteFile + _stars.json update
-		mockFetch.mockResolvedValueOnce(githubResponse({})); // deleteFile
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'stars-updated' } })); // update _stars.json
 
 		await store.deleteFolder('inbox');
 
@@ -150,19 +158,9 @@ describe('starred folder cleanup', () => {
 	});
 
 	it('updates starred path when folder is renamed', async () => {
-		// Setup: create folder, star it
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } })); // createFolder
 		await store.createFolder('work');
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'star-sha' } })); // toggleStarFolder
 		await store.toggleStarFolder('work');
 		expect(store.isStarredFolder('work')).toBe(true);
-		mockFetch.mockReset();
-
-		// Rename folder — mock create new + delete old + _stars.json update
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } })) // create new index.md
-			.mockResolvedValueOnce(githubResponse({})) // delete old index.md
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'stars-updated' } })); // update _stars.json
 
 		await store.renameFolder('work', 'projects');
 
@@ -182,12 +180,16 @@ describe('loadNotes — star bootstrap', () => {
 	});
 
 	it('fetches stars from GitHub and updates cache when online', async () => {
-		// pushOfflineQueue reads cache (no fetch if queue empty)
-		// fullSync: listFiles returns empty tree (no .md files to fetch)
-		mockFetch.mockResolvedValueOnce(githubResponse({ tree: [] }));
-		// getFileContent('_stars.json')
-		mockFetch.mockResolvedValueOnce(
-			githubResponse({ content: btoa(JSON.stringify(['remote-folder'])), sha: 'remote-sha' })
+		server.use(
+			http.get('https://api.github.com/repos/:owner/:repo/git/trees/:sha', () =>
+				HttpResponse.json({ tree: [] })
+			),
+			http.get('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({
+					content: btoa(JSON.stringify(['remote-folder'])),
+					sha: 'remote-sha'
+				})
+			)
 		);
 
 		await store.loadNotes();

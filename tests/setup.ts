@@ -1,4 +1,5 @@
 import '@testing-library/jest-dom/vitest';
+import { server } from './mocks/server';
 
 // In-memory localStorage mock — Node 25 has a native localStorage but it
 // requires --localstorage-file to be set and lacks clear(). Provide a full
@@ -42,6 +43,11 @@ vi.mock('idb-keyval', () => ({
 	}),
 	keys: vi.fn(() => Promise.resolve([...store.keys()]))
 }));
+
+// MSW server lifecycle
+beforeAll(() => server.listen({ onUnhandledRequest: 'error' }));
+afterEach(() => server.resetHandlers());
+afterAll(() => server.close());
 
 // Reset stores between tests
 beforeEach(() => {

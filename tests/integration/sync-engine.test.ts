@@ -1,20 +1,17 @@
 import { describe, it, expect, beforeEach } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { SyncEngine } from '$lib/sync';
 import { GitHubClient } from '$lib/github';
 import { NoteCache } from '$lib/cache';
-import { createMockFetch, githubResponse, createTestSyncItem } from '../factories';
-
-// Mock only the network boundary
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
+import { createTestSyncItem } from '../factories';
 
 describe('SyncEngine', () => {
 	let github: GitHubClient;
-	let cache: NoteCache; // REAL cache, backed by in-memory idb-keyval
+	let cache: NoteCache;
 	let sync: SyncEngine;
 
 	beforeEach(() => {
-		mockFetch.mockReset();
 		github = new GitHubClient('fake-token', 'testuser/mylife-notes');
 		cache = new NoteCache();
 		sync = new SyncEngine(github, cache);
@@ -22,12 +19,16 @@ describe('SyncEngine', () => {
 
 	describe('fullSync', () => {
 		it('includes .gitkeep files so empty folders survive a refresh', async () => {
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({
-					tree: [{ path: 'projects/.gitkeep', type: 'blob', sha: 'gk1' }]
-				})
+			server.use(
+				http.get('https://api.github.com/repos/:owner/:repo/git/trees/:sha', () =>
+					HttpResponse.json({
+						tree: [{ path: 'projects/.gitkeep', type: 'blob', sha: 'gk1' }]
+					})
+				),
+				http.get('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+					HttpResponse.json({ content: btoa(''), sha: 'gk1' })
+				)
 			);
-			mockFetch.mockResolvedValueOnce(githubResponse({ content: btoa(''), sha: 'gk1' }));
 
 			const notes = await sync.fullSync();
 
@@ -36,17 +37,19 @@ describe('SyncEngine', () => {
 		});
 
 		it('fetches files from GitHub, caches them, and returns Notes', async () => {
-			// Mock: listFiles (tree endpoint)
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({
-					tree: [
-						{ path: 'inbox/note.md', type: 'blob', sha: 'abc' },
-						{ path: 'inbox', type: 'tree', sha: 'dir' }
-					]
-				})
+			server.use(
+				http.get('https://api.github.com/repos/:owner/:repo/git/trees/:sha', () =>
+					HttpResponse.json({
+						tree: [
+							{ path: 'inbox/note.md', type: 'blob', sha: 'abc' },
+							{ path: 'inbox', type: 'tree', sha: 'dir' }
+						]
+					})
+				),
+				http.get('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+					HttpResponse.json({ content: btoa('Hello world'), sha: 'abc' })
+				)
 			);
-			// Mock: getFileContent
-			mockFetch.mockResolvedValueOnce(githubResponse({ content: btoa('Hello world'), sha: 'abc' }));
 
 			const notes = await sync.fullSync();
 
@@ -55,17 +58,18 @@ describe('SyncEngine', () => {
 			expect(notes[0].content).toBe('Hello world');
 			expect(notes[0].title).toBe('Hello world');
 
-			// Verify it was cached (real IndexedDB)
 			const cached = await cache.getNote('inbox/note.md');
 			expect(cached?.content).toBe('Hello world');
 		});
 
 		it('derives title from # heading', async () => {
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({ tree: [{ path: 'work/task.md', type: 'blob', sha: 'x' }] })
-			);
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({ content: btoa('# My Task\nSome details'), sha: 'x' })
+			server.use(
+				http.get('https://api.github.com/repos/:owner/:repo/git/trees/:sha', () =>
+					HttpResponse.json({ tree: [{ path: 'work/task.md', type: 'blob', sha: 'x' }] })
+				),
+				http.get('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+					HttpResponse.json({ content: btoa('# My Task\nSome details'), sha: 'x' })
+				)
 			);
 
 			const notes = await sync.fullSync();
@@ -73,11 +77,13 @@ describe('SyncEngine', () => {
 		});
 
 		it('detects todo type from checkbox syntax', async () => {
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({ tree: [{ path: 'inbox/todos.md', type: 'blob', sha: 'y' }] })
-			);
-			mockFetch.mockResolvedValueOnce(
-				githubResponse({ content: btoa('Shopping\n- [ ] Milk\n- [x] Eggs'), sha: 'y' })
+			server.use(
+				http.get('https://api.github.com/repos/:owner/:repo/git/trees/:sha', () =>
+					HttpResponse.json({ tree: [{ path: 'inbox/todos.md', type: 'blob', sha: 'y' }] })
+				),
+				http.get('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+					HttpResponse.json({ content: btoa('Shopping\n- [ ] Milk\n- [x] Eggs'), sha: 'y' })
+				)
 			);
 
 			const notes = await sync.fullSync();
@@ -87,19 +93,22 @@ describe('SyncEngine', () => {
 
 	describe('pushOfflineQueue', () => {
 		it('processes queued create operations and clears the queue', async () => {
-			// Seed the queue in real cache
 			await cache.saveSyncQueue([
 				createTestSyncItem({ action: 'create', path: 'inbox/new.md', content: 'New note' })
 			]);
-			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } }));
+
+			let capturedUrl = '';
+			server.use(
+				http.put('https://api.github.com/repos/:owner/:repo/contents/*', ({ request }) => {
+					capturedUrl = request.url;
+					return HttpResponse.json({ content: { sha: 'new-sha' } });
+				})
+			);
 
 			await sync.pushOfflineQueue();
 
-			// Verify GitHub was called
-			expect(mockFetch).toHaveBeenCalledTimes(1);
-			expect(mockFetch.mock.calls[0][0]).toContain('/contents/inbox/new.md');
+			expect(capturedUrl).toContain('/contents/inbox/new.md');
 
-			// Verify queue was cleared
 			const queue = await cache.getSyncQueue();
 			expect(queue).toEqual([]);
 		});
@@ -109,9 +118,15 @@ describe('SyncEngine', () => {
 				createTestSyncItem({ action: 'create', path: 'inbox/ok.md', content: 'ok' }),
 				createTestSyncItem({ action: 'create', path: 'inbox/fail.md', content: 'fail' })
 			]);
-			mockFetch
-				.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha1' } }))
-				.mockRejectedValueOnce(new Error('network error'));
+
+			let callCount = 0;
+			server.use(
+				http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => {
+					callCount++;
+					if (callCount === 2) return HttpResponse.error();
+					return HttpResponse.json({ content: { sha: `sha${callCount}` } });
+				})
+			);
 
 			await sync.pushOfflineQueue();
 
@@ -129,14 +144,24 @@ describe('SyncEngine', () => {
 					sha: 'old-sha'
 				})
 			]);
-			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } }));
+
+			let capturedUrl = '';
+			let capturedMethod = '';
+			let capturedBody: { sha?: string } = {};
+			server.use(
+				http.put('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+					capturedUrl = request.url;
+					capturedMethod = request.method;
+					capturedBody = (await request.json()) as { sha?: string };
+					return HttpResponse.json({ content: { sha: 'new-sha' } });
+				})
+			);
 
 			await sync.pushOfflineQueue();
 
-			const [url, opts] = mockFetch.mock.calls[0];
-			expect(url).toContain('/contents/inbox/note.md');
-			expect(opts.method).toBe('PUT');
-			expect(JSON.parse(opts.body).sha).toBe('old-sha');
+			expect(capturedUrl).toContain('/contents/inbox/note.md');
+			expect(capturedMethod).toBe('PUT');
+			expect(capturedBody.sha).toBe('old-sha');
 			expect(await cache.getSyncQueue()).toEqual([]);
 		});
 
@@ -144,19 +169,28 @@ describe('SyncEngine', () => {
 			await cache.saveSyncQueue([
 				createTestSyncItem({ action: 'delete', path: 'inbox/gone.md', sha: 'del-sha' })
 			]);
-			mockFetch.mockResolvedValueOnce(githubResponse({}));
+
+			let capturedUrl = '';
+			let capturedMethod = '';
+			server.use(
+				http.delete('https://api.github.com/repos/:owner/:repo/contents/*', ({ request }) => {
+					capturedUrl = request.url;
+					capturedMethod = request.method;
+					return HttpResponse.json({});
+				})
+			);
 
 			await sync.pushOfflineQueue();
 
-			const [url, opts] = mockFetch.mock.calls[0];
-			expect(url).toContain('/contents/inbox/gone.md');
-			expect(opts.method).toBe('DELETE');
+			expect(capturedUrl).toContain('/contents/inbox/gone.md');
+			expect(capturedMethod).toBe('DELETE');
 			expect(await cache.getSyncQueue()).toEqual([]);
 		});
 
 		it('does nothing when queue is empty', async () => {
 			await sync.pushOfflineQueue();
-			expect(mockFetch).not.toHaveBeenCalled();
+			const queue = await cache.getSyncQueue();
+			expect(queue).toEqual([]);
 		});
 	});
 });

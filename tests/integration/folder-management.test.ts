@@ -1,14 +1,10 @@
 import { describe, it, expect, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/svelte';
-import { createMockFetch, githubResponse, createTestNote } from '../factories';
+import { createTestNote } from '../factories';
 import { buildFolderTree } from '$lib/stores/notes.svelte';
 
-// Mock only the network boundary
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
-
 beforeEach(() => {
-	mockFetch.mockReset();
+	// No network setup needed — MSW default handlers cover any incidental GitHub calls
 });
 
 // --- Pure utility: folder tree includes folders created via index.md ---
@@ -302,19 +298,27 @@ describe('FolderPanel', () => {
 		vi.useRealTimers();
 	});
 
-	// GitHub API tests for createFolder, renameFolder, deleteFolder
 	describe('createFolder via GitHubClient', () => {
 		it('creates an index.md file in the new folder', async () => {
 			const { GitHubClient } = await import('$lib/github');
-			const client = new GitHubClient('token', 'user/repo');
-			mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'abc' } }));
+			const { http, HttpResponse } = await import('msw');
+			const { server } = await import('../mocks/server');
 
+			let capturedUrl = '';
+			let capturedMethod = '';
+			server.use(
+				http.put('https://api.github.com/repos/:owner/:repo/contents/*', ({ request }) => {
+					capturedUrl = request.url;
+					capturedMethod = request.method;
+					return HttpResponse.json({ content: { sha: 'abc' } });
+				})
+			);
+
+			const client = new GitHubClient('token', 'user/repo');
 			await client.createFile('projects/index.md', '');
 
-			expect(mockFetch).toHaveBeenCalledWith(
-				expect.stringContaining('/contents/projects/index.md'),
-				expect.objectContaining({ method: 'PUT' })
-			);
+			expect(capturedUrl).toContain('/contents/projects/index.md');
+			expect(capturedMethod).toBe('PUT');
 		});
 	});
 });

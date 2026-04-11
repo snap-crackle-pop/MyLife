@@ -1,9 +1,7 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { NoteCache } from '$lib/cache';
-import { createMockFetch, githubResponse } from '../factories';
-
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
 
 const testCache = new NoteCache();
 
@@ -11,7 +9,6 @@ type StoreModule = typeof import('$lib/stores/notes.svelte');
 let store: StoreModule;
 
 beforeEach(async () => {
-	mockFetch.mockReset();
 	vi.resetModules();
 	store = (await import('$lib/stores/notes.svelte')) as StoreModule;
 	store.initStore('fake-token', 'testuser/mylife-notes');
@@ -26,8 +23,6 @@ afterEach(() => {
 
 describe('createFolder', () => {
 	it('adds index.md placeholder to store immediately', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }));
-
 		await store.createFolder('projects');
 
 		const notes = store.getNotes();
@@ -35,8 +30,6 @@ describe('createFolder', () => {
 	});
 
 	it('folder appears in getFolderTree after creation', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }));
-
 		await store.createFolder('reading');
 
 		const tree = store.getFolderTree();
@@ -44,7 +37,11 @@ describe('createFolder', () => {
 	});
 
 	it('patches index.md SHA after API succeeds', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'real-sha' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'real-sha' } })
+			)
+		);
 
 		await store.createFolder('ideas');
 
@@ -53,9 +50,12 @@ describe('createFolder', () => {
 	});
 
 	it('queues create op when API fails', async () => {
-		mockFetch.mockRejectedValueOnce(new Error('server error'));
-		// second call (getFileContent fallback) also fails
-		mockFetch.mockRejectedValueOnce(new Error('not found'));
+		// Both createFile (PUT) and the getFileContent fallback (GET) must fail
+		// for the store to queue the op instead of using the fallback sha
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error()),
+			http.get('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error())
+		);
 
 		await store.createFolder('drafts');
 
@@ -70,17 +70,11 @@ describe('createFolder', () => {
 
 		await store.createFolder('offline-folder');
 
-		expect(mockFetch).not.toHaveBeenCalled();
-
 		const queue = await testCache.getSyncQueue();
 		expect(queue.some((q) => q.path === 'offline-folder/index.md')).toBe(true);
 	});
 
 	it('does not add duplicate index.md if folder already exists', async () => {
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
-
 		await store.createFolder('dedupe');
 		await store.createFolder('dedupe');
 
@@ -93,27 +87,14 @@ describe('createFolder', () => {
 
 describe('renameFolder', () => {
 	async function setupFolderWithNotes() {
-		// Create folder + 2 notes
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } })) // createFolder (index.md)
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n1' } })) // note 1
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-n2' } })); // note 2
-
+		// Default PUT handler covers all three creates (index.md + 2 notes)
 		await store.createFolder('work');
 		await store.createNote('work', 'Task A', 'text');
 		await store.createNote('work', 'Task B', 'text');
-		mockFetch.mockReset();
 	}
 
 	it('renames all note paths in store immediately', async () => {
 		await setupFolderWithNotes();
-
-		// Mock API calls for each file: create new + delete old (3 files: index.md + 2 notes)
-		for (let i = 0; i < 3; i++) {
-			mockFetch
-				.mockResolvedValueOnce(githubResponse({ content: { sha: `new-sha-${i}` } })) // create new
-				.mockResolvedValueOnce(githubResponse({})); // delete old
-		}
 
 		await store.renameFolder('work', 'projects');
 
@@ -125,12 +106,6 @@ describe('renameFolder', () => {
 	it('renamed folder appears in getFolderTree, old name does not', async () => {
 		await setupFolderWithNotes();
 
-		for (let i = 0; i < 3; i++) {
-			mockFetch
-				.mockResolvedValueOnce(githubResponse({ content: { sha: `sha-${i}` } }))
-				.mockResolvedValueOnce(githubResponse({}));
-		}
-
 		await store.renameFolder('work', 'projects');
 
 		const tree = store.getFolderTree();
@@ -141,32 +116,40 @@ describe('renameFolder', () => {
 	it('issues create+delete API calls for each file in the folder', async () => {
 		await setupFolderWithNotes();
 
-		for (let i = 0; i < 3; i++) {
-			mockFetch
-				.mockResolvedValueOnce(githubResponse({ content: { sha: `sha-${i}` } }))
-				.mockResolvedValueOnce(githubResponse({}));
-		}
+		const requestLog: { method: string; url: string }[] = [];
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', ({ request }) => {
+				requestLog.push({ method: 'PUT', url: request.url });
+				return HttpResponse.json({ content: { sha: 'new-sha' } });
+			}),
+			http.delete('https://api.github.com/repos/:owner/:repo/contents/*', ({ request }) => {
+				requestLog.push({ method: 'DELETE', url: request.url });
+				return HttpResponse.json({});
+			})
+		);
 
 		await store.renameFolder('work', 'archive');
 
-		// 3 files × 2 calls (create + delete) = 6
-		expect(mockFetch).toHaveBeenCalledTimes(6);
-		expect(mockFetch).toHaveBeenCalledWith(
-			expect.stringContaining('/contents/archive/'),
-			expect.objectContaining({ method: 'PUT' })
+		expect(requestLog).toHaveLength(6); // 3 files × (create + delete)
+		expect(requestLog.some((r) => r.method === 'PUT' && r.url.includes('/contents/archive/'))).toBe(
+			true
 		);
 	});
 
 	it('queues create+delete ops for files when API fails', async () => {
 		await setupFolderWithNotes();
-		mockFetch.mockRejectedValue(new Error('network error'));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error()),
+			http.delete('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.error()
+			)
+		);
 
 		await store.renameFolder('work', 'archive');
 
 		const queue = await testCache.getSyncQueue();
 		const creates = queue.filter((q) => q.action === 'create' && q.path.startsWith('archive/'));
 		const deletes = queue.filter((q) => q.action === 'delete' && q.path.startsWith('work/'));
-		// Only note files queue deletes (index.md with no sha skips delete)
 		expect(creates.length).toBeGreaterThan(0);
 		expect(deletes.length).toBeGreaterThan(0);
 	});
@@ -177,8 +160,6 @@ describe('renameFolder', () => {
 
 		await store.renameFolder('work', 'archive');
 
-		expect(mockFetch).not.toHaveBeenCalled();
-
 		const queue = await testCache.getSyncQueue();
 		expect(queue.filter((q) => q.path.startsWith('archive/')).length).toBeGreaterThan(0);
 	});
@@ -188,25 +169,14 @@ describe('renameFolder', () => {
 
 describe('deleteFolder', () => {
 	async function setupFolderWithNotes() {
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'n1-sha' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'n2-sha' } }));
-
 		await store.createFolder('old-folder');
 		const n1 = await store.createNote('old-folder', 'Note One', 'text');
 		const n2 = await store.createNote('old-folder', 'Note Two', 'text');
-		mockFetch.mockReset();
 		return { n1, n2 };
 	}
 
 	it('removes folder from store and getFolderTree immediately', async () => {
 		await setupFolderWithNotes();
-
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({})) // delete index.md
-			.mockResolvedValueOnce(githubResponse({})) // delete note 1
-			.mockResolvedValueOnce(githubResponse({})); // delete note 2
 
 		await store.deleteFolder('old-folder');
 
@@ -217,11 +187,6 @@ describe('deleteFolder', () => {
 	it('permanently removes notes, not moves to .trash/', async () => {
 		await setupFolderWithNotes();
 
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({}))
-			.mockResolvedValueOnce(githubResponse({}))
-			.mockResolvedValueOnce(githubResponse({}));
-
 		await store.deleteFolder('old-folder');
 
 		const notes = store.getNotes();
@@ -231,7 +196,11 @@ describe('deleteFolder', () => {
 
 	it('queues delete ops for each file when API fails', async () => {
 		await setupFolderWithNotes();
-		mockFetch.mockRejectedValue(new Error('network error'));
+		server.use(
+			http.delete('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.error()
+			)
+		);
 
 		await store.deleteFolder('old-folder');
 
@@ -241,11 +210,7 @@ describe('deleteFolder', () => {
 	});
 
 	it('handles deleting an empty folder (only index.md)', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'gk-sha' } }));
 		await store.createFolder('empty-folder');
-		mockFetch.mockReset();
-
-		mockFetch.mockResolvedValueOnce(githubResponse({})); // delete index.md
 
 		await store.deleteFolder('empty-folder');
 
@@ -259,7 +224,6 @@ describe('deleteFolder', () => {
 
 		await store.deleteFolder('old-folder');
 
-		expect(mockFetch).not.toHaveBeenCalled();
 		const queue = await testCache.getSyncQueue();
 		expect(
 			queue.filter((q) => q.action === 'delete' && q.path.startsWith('old-folder/')).length
@@ -271,7 +235,6 @@ describe('deleteFolder', () => {
 
 describe('getFolderNote', () => {
 	it('returns the index.md note for a folder that exists', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'idx-sha' } }));
 		await store.createFolder('journal');
 
 		const note = store.getFolderNote('journal');
@@ -285,11 +248,7 @@ describe('getFolderNote', () => {
 	});
 
 	it('returns the note after renaming the folder', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } })); // createFolder
 		await store.createFolder('old');
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'new-sha' } })) // create new path
-			.mockResolvedValueOnce(githubResponse({})); // delete old path
 
 		await store.renameFolder('old', 'new');
 

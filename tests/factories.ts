@@ -50,32 +50,3 @@ export function createTestSyncItem(overrides: Partial<SyncQueueItem> = {}): Sync
 		...overrides
 	};
 }
-
-/**
- * Creates a mock fetch that responds to GitHub API calls.
- * Use this instead of manually crafting mockFetch responses.
- */
-export function createMockFetch() {
-	return vi.fn();
-}
-
-/**
- * Helper to create a successful GitHub API response.
- */
-export function githubResponse(data: unknown) {
-	return {
-		ok: true,
-		json: async () => data
-	};
-}
-
-/**
- * Helper to create a failed GitHub API response.
- */
-export function githubError(status: number, statusText: string) {
-	return {
-		ok: false,
-		status,
-		statusText
-	};
-}

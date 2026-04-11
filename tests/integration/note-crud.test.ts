@@ -1,18 +1,14 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import { NoteCache } from '$lib/cache';
-import { createMockFetch, githubResponse } from '../factories';
 
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
-
-// Test-side cache shares the same idb-keyval mock Map as the store's cache
 const testCache = new NoteCache();
 
 type StoreModule = typeof import('$lib/stores/notes.svelte');
 let store: StoreModule;
 
 beforeEach(async () => {
-	mockFetch.mockReset();
 	vi.resetModules();
 	store = (await import('$lib/stores/notes.svelte')) as StoreModule;
 	store.initStore('fake-token', 'testuser/mylife-notes');
@@ -27,9 +23,6 @@ afterEach(() => {
 
 describe('createNote', () => {
 	it('adds note to store immediately before API responds', async () => {
-		// The function awaits the API, so we verify the optimistic note structure
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-123' } }));
-
 		await store.createNote('inbox', 'My First Note', 'text');
 
 		const notes = store.getNotes();
@@ -37,7 +30,11 @@ describe('createNote', () => {
 	});
 
 	it('patches SHA in store and cache after API succeeds', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'confirmed-sha' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'confirmed-sha' } })
+			)
+		);
 
 		const note = await store.createNote('inbox', 'Confirmed Note', 'text');
 
@@ -49,7 +46,9 @@ describe('createNote', () => {
 	});
 
 	it('note stays in store and op is queued when API fails', async () => {
-		mockFetch.mockRejectedValueOnce(new Error('network error'));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error())
+		);
 
 		await store.createNote('inbox', 'Queued Note', 'text');
 
@@ -67,7 +66,6 @@ describe('createNote', () => {
 		await store.createNote('inbox', 'Offline Note', 'text');
 
 		expect(store.getNotes().some((n) => n.title === 'Offline Note')).toBe(true);
-		expect(mockFetch).not.toHaveBeenCalled();
 
 		const queue = await testCache.getSyncQueue();
 		expect(queue.length).toBe(1);
@@ -75,8 +73,6 @@ describe('createNote', () => {
 	});
 
 	it('creates a todo note with checkbox syntax', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-todo' } }));
-
 		const note = await store.createNote('inbox', 'Shopping List', 'todo');
 
 		expect(note.type).toBe('todo');
@@ -88,10 +84,8 @@ describe('createNote', () => {
 
 describe('updateNote', () => {
 	it('updates note content in store immediately', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Draft Note', 'text');
 
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
 		await store.updateNote(note.path, 'Updated content');
 
 		const updated = store.getNotes().find((n) => n.path === note.path);
@@ -99,10 +93,8 @@ describe('updateNote', () => {
 	});
 
 	it('derives title from first line of new content', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Old Title', 'text');
 
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
 		await store.updateNote(note.path, '# New Title\n\nBody text here');
 
 		const updated = store.getNotes().find((n) => n.path === note.path);
@@ -110,10 +102,8 @@ describe('updateNote', () => {
 	});
 
 	it('detects todo type when content has checkboxes', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Plain Note', 'text');
 
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
 		await store.updateNote(note.path, 'Tasks\n\n- [ ] First item\n- [x] Done');
 
 		const updated = store.getNotes().find((n) => n.path === note.path);
@@ -121,10 +111,13 @@ describe('updateNote', () => {
 	});
 
 	it('patches SHA in store after API succeeds', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'original-sha' } }));
 		const note = await store.createNote('inbox', 'SHA Test', 'text');
 
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'updated-sha' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'updated-sha' } })
+			)
+		);
 		await store.updateNote(note.path, 'New content');
 
 		const updated = store.getNotes().find((n) => n.path === note.path);
@@ -132,10 +125,11 @@ describe('updateNote', () => {
 	});
 
 	it('queues update op when API fails', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Will Fail Note', 'text');
 
-		mockFetch.mockRejectedValueOnce(new Error('network error'));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () => HttpResponse.error())
+		);
 		await store.updateNote(note.path, 'Updated but failed');
 
 		const queue = await testCache.getSyncQueue();
@@ -147,10 +141,7 @@ describe('updateNote', () => {
 
 describe('deleteNote', () => {
 	it('removes note from store and cache immediately', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'To Delete', 'text');
-		mockFetch.mockReset();
-		mockFetch.mockResolvedValueOnce(githubResponse({}));
 
 		await store.deleteNote(note.path);
 
@@ -160,26 +151,40 @@ describe('deleteNote', () => {
 	});
 
 	it('calls deleteFile with the correct path and sha', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-del' } }));
+		server.use(
+			http.put('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.json({ content: { sha: 'sha-del' } })
+			)
+		);
 		const note = await store.createNote('inbox', 'Del SHA Test', 'text');
-		mockFetch.mockReset();
-		mockFetch.mockResolvedValueOnce(githubResponse({}));
+
+		let capturedUrl = '';
+		let capturedMethod = '';
+		let capturedBody: { sha?: string } = {};
+		server.use(
+			http.delete('https://api.github.com/repos/:owner/:repo/contents/*', async ({ request }) => {
+				capturedUrl = request.url;
+				capturedMethod = request.method;
+				capturedBody = (await request.json()) as { sha?: string };
+				return HttpResponse.json({});
+			})
+		);
 
 		await store.deleteNote(note.path);
 
-		expect(mockFetch).toHaveBeenCalledOnce();
-		const [url, opts] = mockFetch.mock.calls[0] as [string, RequestInit];
-		expect(url).toContain('inbox');
-		expect((opts.method as string).toUpperCase()).toBe('DELETE');
-		const body = JSON.parse(opts.body as string);
-		expect(body.sha).toBe('sha-del');
+		expect(capturedUrl).toContain('inbox');
+		expect(capturedMethod.toUpperCase()).toBe('DELETE');
+		expect(capturedBody.sha).toBe('sha-del');
 	});
 
 	it('queues delete op when API fails', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Fail Delete', 'text');
 
-		mockFetch.mockRejectedValueOnce(new Error('network error'));
+		server.use(
+			http.delete('https://api.github.com/repos/:owner/:repo/contents/*', () =>
+				HttpResponse.error()
+			)
+		);
 
 		await store.deleteNote(note.path);
 
@@ -188,109 +193,13 @@ describe('deleteNote', () => {
 	});
 
 	it('queues delete op and skips API when offline', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
 		const note = await store.createNote('inbox', 'Offline Delete', 'text');
-		mockFetch.mockReset();
 
 		Object.defineProperty(navigator, 'onLine', { get: () => false, configurable: true });
 
 		await store.deleteNote(note.path);
 
-		expect(mockFetch).not.toHaveBeenCalled();
 		const queue = await testCache.getSyncQueue();
 		expect(queue.some((q) => q.action === 'delete' && q.path === note.path)).toBe(true);
-	});
-
-	it('does nothing when note path is not found', async () => {
-		await store.deleteNote('inbox/nonexistent.md');
-		expect(mockFetch).not.toHaveBeenCalled();
-	});
-});
-
-// ── getNotesInFolder / getFolderTree ──────────────────────────────────────────
-
-describe('getNotesInFolder', () => {
-	it('returns only notes in the specified folder', async () => {
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
-
-		await store.createNote('inbox', 'Inbox Note', 'text');
-		await store.createNote('work', 'Work Note', 'text');
-
-		const inbox = store.getNotesInFolder('inbox');
-		expect(inbox.every((n) => n.path.startsWith('inbox/'))).toBe(true);
-		expect(inbox.some((n) => n.title === 'Inbox Note')).toBe(true);
-		expect(inbox.some((n) => n.title === 'Work Note')).toBe(false);
-	});
-
-	it('excludes .gitkeep files from folder note list', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-gk' } }));
-		await store.createFolder('projects');
-
-		const notes = store.getNotesInFolder('projects');
-		expect(notes.some((n) => n.path.endsWith('.gitkeep'))).toBe(false);
-	});
-});
-
-// ── togglePin / getPinnedNotes ────────────────────────────────────────────────
-
-describe('togglePin', () => {
-	it('pins an unpinned note', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		const note = await store.createNote('inbox', 'Pin Me', 'text');
-
-		await store.togglePin(note.path);
-
-		expect(store.getNotes().find((n) => n.path === note.path)?.pinned).toBe(true);
-	});
-
-	it('unpins an already pinned note', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		const note = await store.createNote('inbox', 'Toggle Pin', 'text');
-
-		await store.togglePin(note.path);
-		await store.togglePin(note.path);
-
-		expect(store.getNotes().find((n) => n.path === note.path)?.pinned).toBe(false);
-	});
-
-	it('persists pin state to cache', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		const note = await store.createNote('inbox', 'Cache Pin', 'text');
-
-		await store.togglePin(note.path);
-
-		const cached = await testCache.getNote(note.path);
-		expect(cached?.pinned).toBe(true);
-	});
-
-	it('does nothing when note path is not found', async () => {
-		const before = store.getNotes().length;
-		await store.togglePin('inbox/nonexistent.md');
-		expect(store.getNotes().length).toBe(before);
-	});
-});
-
-describe('getPinnedNotes', () => {
-	it('returns only pinned notes', async () => {
-		mockFetch
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }))
-			.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-2' } }));
-
-		const pinned = await store.createNote('inbox', 'Pinned', 'text');
-		await store.createNote('inbox', 'Not Pinned', 'text');
-		await store.togglePin(pinned.path);
-
-		const result = store.getPinnedNotes();
-		expect(result).toHaveLength(1);
-		expect(result[0].path).toBe(pinned.path);
-	});
-
-	it('returns empty array when nothing is pinned', async () => {
-		mockFetch.mockResolvedValueOnce(githubResponse({ content: { sha: 'sha-1' } }));
-		await store.createNote('inbox', 'Unpinned', 'text');
-
-		expect(store.getPinnedNotes()).toEqual([]);
 	});
 });

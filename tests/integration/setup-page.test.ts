@@ -1,11 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { render, screen } from '@testing-library/svelte';
 import userEvent from '@testing-library/user-event';
+import { http, HttpResponse } from 'msw';
+import { server } from '../mocks/server';
 import SetupPage from '../../src/routes/setup/+page.svelte';
-import { createMockFetch, githubError } from '../factories';
-
-const mockFetch = createMockFetch();
-vi.stubGlobal('fetch', mockFetch);
 
 // Mock SvelteKit navigation
 vi.mock('$app/navigation', () => ({
@@ -13,10 +11,6 @@ vi.mock('$app/navigation', () => ({
 }));
 
 describe('Setup Page', () => {
-	beforeEach(() => {
-		mockFetch.mockReset();
-	});
-
 	it('renders the setup form with token and repo fields', () => {
 		render(SetupPage);
 
@@ -45,7 +39,12 @@ describe('Setup Page', () => {
 
 	it('shows error message on failed connection', async () => {
 		const user = userEvent.setup();
-		mockFetch.mockResolvedValueOnce(githubError(401, 'Unauthorized'));
+		server.use(
+			http.get(
+				'https://api.github.com/repos/:owner/:repo',
+				() => new HttpResponse(null, { status: 401, statusText: 'Unauthorized' })
+			)
+		);
 
 		render(SetupPage);
 
@@ -53,7 +52,6 @@ describe('Setup Page', () => {
 		await user.type(screen.getByPlaceholderText(/username\//), 'user/repo');
 		await user.click(screen.getByRole('button', { name: /connect/i }));
 
-		// Wait for error to appear
 		expect(await screen.findByText(/GitHub API error/)).toBeInTheDocument();
 	});
 });
