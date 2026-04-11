@@ -8,7 +8,7 @@ interface MockFile {
 	sha: string;
 }
 
-async function mockGitHub(page: Page, files: MockFile[] = []) {
+async function setupApp(page: Page, files: MockFile[] = []) {
 	await page.route('https://api.github.com/**', (route) => {
 		const url = route.request().url();
 		const method = route.request().method();
@@ -22,7 +22,6 @@ async function mockGitHub(page: Page, files: MockFile[] = []) {
 				})
 			});
 		}
-
 		if (method === 'GET' && url.includes('/contents/')) {
 			const filePath = new URL(url).pathname.split('/contents/')[1];
 			const file = files.find((f) => f.path === filePath);
@@ -35,25 +34,18 @@ async function mockGitHub(page: Page, files: MockFile[] = []) {
 			}
 			return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
 		}
-
 		if (method === 'PUT') {
 			return route.fulfill({
-				status: 201,
+				status: 200,
 				contentType: 'application/json',
-				body: JSON.stringify({ content: { sha: 'created-sha' } })
+				body: JSON.stringify({ content: { sha: 'mock-sha' } })
 			});
 		}
-
 		if (method === 'DELETE') {
 			return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
 		}
-
 		return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
 	});
-}
-
-async function setupApp(page: Page, files: MockFile[] = []) {
-	await mockGitHub(page, files);
 	await page.goto('/');
 	await expect(page).toHaveURL(/\/setup/, { timeout: 5000 });
 	await page.fill('input[type="password"]', 'fake-token');

@@ -16,6 +16,15 @@
 	});
 
 	onMount(async () => {
+		if (typeof (window as unknown as { __mswFixtures?: unknown }).__mswFixtures !== 'undefined') {
+			try {
+				const { worker } = await import('../mocks/browser');
+				await worker.start({ onUnhandledRequest: 'bypass' });
+			} catch {
+				// MSW worker failed to start — continue without interception
+			}
+		}
+
 		const cache = new NoteCache();
 		const config = await cache.getConfig();
 

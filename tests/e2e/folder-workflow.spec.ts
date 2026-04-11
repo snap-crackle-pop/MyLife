@@ -13,15 +13,11 @@ interface MockFile {
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 /**
- * Mock all GitHub API calls for the test.
- * - GET /git/trees/main → file listing
- * - GET /contents/:path → file content
- * - PUT /contents/:path → create/update (returns mock sha)
- * - DELETE /contents/:path → delete (returns ok)
- * - everything else → 200 {} (covers validateConnection, etc.)
+ * Complete the setup flow and land on the main page.
+ * Going through /setup ensures the config is saved to IndexedDB via the real app code,
+ * so subsequent navigations/reloads work correctly.
  */
-async function mockGitHub(page: Page, files: MockFile[] = []) {
-	// Match the base repo URL (validateConnection) AND all sub-paths
+async function setupApp(page: Page, files: MockFile[] = []) {
 	await page.route('https://api.github.com/**', (route) => {
 		const url = route.request().url();
 		const method = route.request().method();
@@ -35,48 +31,30 @@ async function mockGitHub(page: Page, files: MockFile[] = []) {
 				})
 			});
 		}
-
 		if (method === 'GET' && url.includes('/contents/')) {
-			const urlObj = new URL(url);
-			const filePath = urlObj.pathname.split('/contents/')[1];
+			const filePath = new URL(url).pathname.split('/contents/')[1];
 			const file = files.find((f) => f.path === filePath);
 			if (file) {
 				return route.fulfill({
 					status: 200,
 					contentType: 'application/json',
-					body: JSON.stringify({
-						content: btoa(file.content),
-						sha: file.sha
-					})
+					body: JSON.stringify({ content: btoa(file.content), sha: file.sha })
 				});
 			}
 			return route.fulfill({ status: 404, contentType: 'application/json', body: '{}' });
 		}
-
 		if (method === 'PUT') {
 			return route.fulfill({
-				status: 201,
+				status: 200,
 				contentType: 'application/json',
-				body: JSON.stringify({ content: { sha: 'created-sha' } })
+				body: JSON.stringify({ content: { sha: 'mock-sha' } })
 			});
 		}
-
 		if (method === 'DELETE') {
 			return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
 		}
-
-		// validateConnection, HEAD, etc.
 		return route.fulfill({ status: 200, contentType: 'application/json', body: '{}' });
 	});
-}
-
-/**
- * Complete the setup flow and land on the main page.
- * Going through /setup ensures the config is saved to IndexedDB via the real app code,
- * so subsequent navigations/reloads work correctly.
- */
-async function setupApp(page: Page, files: MockFile[] = []) {
-	await mockGitHub(page, files);
 	await page.goto('/'); // layout redirects to /setup when no config
 	await expect(page).toHaveURL(/\/setup/, { timeout: 5000 });
 
